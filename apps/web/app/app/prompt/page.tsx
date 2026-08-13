@@ -10,7 +10,7 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/use-own-instance";
 import type { PromptVersionDetail } from "@/lib/types";
 import { AiAssistPanel } from "./ai-assist-panel";
-import { InstanceSwitcher } from "./instance-switcher";
+import { InstanceSwitcher } from "@/components/instance-switcher";
 
 export default function PromptEditorPage() {
   const { instances, selectedId, setSelectedId } = useOwnInstances();

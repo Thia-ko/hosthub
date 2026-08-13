@@ -59,3 +59,12 @@ export interface WebhookEvent {
   payload_json: unknown;
   received_at: string;
 }
+
+export interface DashboardSummary {
+  date: string;
+  total_events: number;
+  events_by_hour: { hour: number; count: number }[];
+  prompt_versions_count: number;
+  ai_assist_usage_today: number;
+  ai_assist_daily_limit: number;
+}

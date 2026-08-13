@@ -58,7 +58,12 @@ export default function AdminInstanceDetailPage({
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
-      <h1 className="text-xl font-semibold">{instance.name}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">{instance.name}</h1>
+        <Link className="text-sm text-muted-foreground hover:underline" href={`/admin/instances/${instance.id}/dashboard`}>
+          Ver dashboard
+        </Link>
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">Nome</Label>
         <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />

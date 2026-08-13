@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiFetch } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/use-own-instance";
 import type { PromptVersionSource, PromptVersionSummary } from "@/lib/types";
-import { InstanceSwitcher } from "../instance-switcher";
+import { InstanceSwitcher } from "@/components/instance-switcher";
 
 const SOURCE_LABEL: Record<PromptVersionSource, string> = {
   manual: "Manual",
