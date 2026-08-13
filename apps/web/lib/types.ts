@@ -40,3 +40,16 @@ export interface PromptVersionDiffResponse {
   from: { version_number: number; content: string };
   to: { version_number: number; content: string };
 }
+
+export interface AiAssistUsage {
+  used_today: number;
+  limit: number;
+  resets_at: string;
+}
+
+export interface AiAssistSuggestResponse {
+  ai_assist_request_id: string;
+  suggested_content: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+}

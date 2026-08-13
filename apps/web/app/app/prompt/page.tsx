@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/use-own-instance";
 import type { PromptVersionDetail } from "@/lib/types";
+import { AiAssistPanel } from "./ai-assist-panel";
 import { InstanceSwitcher } from "./instance-switcher";
 
 export default function PromptEditorPage() {
@@ -19,21 +20,25 @@ export default function PromptEditorPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    apiFetch<PromptVersionDetail[]>(`/instances/${selectedId}/prompt-versions`).then((versions) => {
+  const loadCurrentVersion = useCallback((instanceId: string) => {
+    apiFetch<PromptVersionDetail[]>(`/instances/${instanceId}/prompt-versions`).then((versions) => {
       const latest = versions[0];
       if (!latest) {
         setCurrent(null);
         setContent("");
         return;
       }
-      apiFetch<PromptVersionDetail>(`/instances/${selectedId}/prompt-versions/${latest.id}`).then((detail) => {
+      apiFetch<PromptVersionDetail>(`/instances/${instanceId}/prompt-versions/${latest.id}`).then((detail) => {
         setCurrent(detail);
         setContent(detail.content);
       });
     });
-  }, [selectedId]);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    loadCurrentVersion(selectedId);
+  }, [selectedId, loadCurrentVersion]);
 
   async function handleSave() {
     if (!selectedId) return;
@@ -71,6 +76,13 @@ export default function PromptEditorPage() {
             <Link className="text-sm text-muted-foreground hover:underline" href="/app/prompt/historico">
               Ver historico
             </Link>
+          ) : null}
+          {selectedId ? (
+            <AiAssistPanel
+              instanceId={selectedId}
+              currentContent={content}
+              onApplied={() => loadCurrentVersion(selectedId)}
+            />
           ) : null}
           <InstanceSwitcher instances={instances} selectedId={selectedId ?? ""} onChange={setSelectedId} />
         </div>
