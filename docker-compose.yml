@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hosthub}
+      POSTGRES_USER: ${POSTGRES_USER:-hosthub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hosthub}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ./apps/api
+    depends_on:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - ./apps/api:/app
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./apps/web
+      target: dev
+    depends_on:
+      - api
+    env_file:
+      - .env
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+
+  proxy:
+    image: caddy:2-alpine
+    depends_on:
+      - api
+      - web
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile
+    ports:
+      - "${PROXY_PORT:-8888}:80"
+
+volumes:
+  db_data:

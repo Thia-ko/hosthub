@@ -1,0 +1,26 @@
+services:
+  db:
+    restart: unless-stopped
+    ports: []
+
+  api:
+    build:
+      context: ./apps/api
+    volumes: []
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    restart: unless-stopped
+    ports: []
+
+  web:
+    build:
+      context: ./apps/web
+    volumes: []
+    command: ["sh", "-c", "npm run build && npm run start"]
+    restart: unless-stopped
+    ports: []
+
+  proxy:
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
