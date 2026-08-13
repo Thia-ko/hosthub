@@ -68,3 +68,14 @@ export interface DashboardSummary {
   ai_assist_usage_today: number;
   ai_assist_daily_limit: number;
 }
+
+export interface PromptTemplate {
+  id: string;
+  niche: string;
+  title: string;
+  description: string;
+  icon_emoji: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}

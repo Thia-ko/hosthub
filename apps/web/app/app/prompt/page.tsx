@@ -11,12 +11,14 @@ import { useOwnInstances } from "@/lib/use-own-instance";
 import type { PromptVersionDetail } from "@/lib/types";
 import { AiAssistPanel } from "./ai-assist-panel";
 import { InstanceSwitcher } from "@/components/instance-switcher";
+import { PENDING_TEMPLATE_KEY } from "@/lib/constants";
 
 export default function PromptEditorPage() {
   const { instances, selectedId, setSelectedId } = useOwnInstances();
   const [current, setCurrent] = useState<PromptVersionDetail | null>(null);
   const [content, setContent] = useState("");
   const [changeNote, setChangeNote] = useState("");
+  const [pendingSource, setPendingSource] = useState<"manual" | "template">("manual");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -37,6 +39,15 @@ export default function PromptEditorPage() {
 
   useEffect(() => {
     if (!selectedId) return;
+    const pending = sessionStorage.getItem(PENDING_TEMPLATE_KEY);
+    if (pending) {
+      const { content: templateContent, title } = JSON.parse(pending) as { content: string; title: string };
+      setContent(templateContent);
+      setChangeNote(`Template: ${title}`);
+      setPendingSource("template");
+      sessionStorage.removeItem(PENDING_TEMPLATE_KEY);
+      return;
+    }
     loadCurrentVersion(selectedId);
   }, [selectedId, loadCurrentVersion]);
 
@@ -47,10 +58,11 @@ export default function PromptEditorPage() {
     try {
       const version = await apiFetch<PromptVersionDetail>(`/instances/${selectedId}/prompt-versions`, {
         method: "POST",
-        body: JSON.stringify({ content, change_note: changeNote || null }),
+        body: JSON.stringify({ content, change_note: changeNote || null, source: pendingSource }),
       });
       setCurrent(version);
       setChangeNote("");
+      setPendingSource("manual");
       setMessage(`Versao ${version.version_number} salva.`);
     } catch (err) {
       setMessage(err instanceof ApiError ? err.message : "Nao foi possivel salvar");
@@ -77,6 +89,9 @@ export default function PromptEditorPage() {
               Ver historico
             </Link>
           ) : null}
+          <Link className="text-sm text-muted-foreground hover:underline" href="/app/prompt/templates">
+            Templates
+          </Link>
           {selectedId ? (
             <AiAssistPanel
               instanceId={selectedId}

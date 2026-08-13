@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,7 @@ class PromptVersionDetail(PromptVersionSummary):
 class PromptVersionCreateRequest(BaseModel):
     content: str
     change_note: str | None = None
+    source: Literal["manual", "template"] = "manual"
 
 
 class PromptVersionDiffSide(BaseModel):

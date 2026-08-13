@@ -86,7 +86,7 @@ async def create_prompt_version(
         instance_id=instance.id,
         version_number=next_number,
         content=payload.content,
-        source=PromptVersionSource.MANUAL,
+        source=PromptVersionSource(payload.source),
         change_note=payload.change_note,
         created_by_user_id=user.id,
     )
