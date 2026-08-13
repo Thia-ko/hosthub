@@ -53,3 +53,9 @@ export interface AiAssistSuggestResponse {
   prompt_tokens: number;
   completion_tokens: number;
 }
+
+export interface WebhookEvent {
+  id: string;
+  payload_json: unknown;
+  received_at: string;
+}

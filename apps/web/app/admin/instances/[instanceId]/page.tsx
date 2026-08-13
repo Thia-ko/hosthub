@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use as usePromise } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,6 +93,12 @@ export default function AdminInstanceDetailPage({
       <div className="flex flex-col gap-1.5">
         <Label>URL do webhook</Label>
         <p className="break-all text-sm text-muted-foreground">/webhooks/{instance.webhook_token}</p>
+        <Link
+          className="w-fit text-sm text-muted-foreground hover:underline"
+          href={`/admin/instances/${instance.id}/webhook`}
+        >
+          Ver eventos recebidos
+        </Link>
       </div>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <Button onClick={handleSave} disabled={saving} className="w-fit">
