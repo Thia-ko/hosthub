@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, require_admin
+from app.core.deps import get_current_user, require_admin, require_cf_access_header
 from app.db.session import get_db
 from app.models.prompt_template import PromptTemplate
 from app.models.user import User
@@ -32,7 +32,7 @@ async def list_templates(
     return list(result.scalars().all())
 
 
-@router.post("", response_model=PromptTemplateOut)
+@router.post("", response_model=PromptTemplateOut, dependencies=[Depends(require_cf_access_header)])
 async def create_template(
     payload: PromptTemplateCreateRequest,
     admin: User = Depends(require_admin),
@@ -45,7 +45,7 @@ async def create_template(
     return template
 
 
-@router.patch("/{template_id}", response_model=PromptTemplateOut)
+@router.patch("/{template_id}", response_model=PromptTemplateOut, dependencies=[Depends(require_cf_access_header)])
 async def update_template(
     template_id: uuid.UUID,
     payload: PromptTemplateUpdateRequest,
@@ -60,7 +60,7 @@ async def update_template(
     return template
 
 
-@router.delete("/{template_id}")
+@router.delete("/{template_id}", dependencies=[Depends(require_cf_access_header)])
 async def delete_template(
     template_id: uuid.UUID,
     _: User = Depends(require_admin),

@@ -18,6 +18,7 @@ from app.core.security import (
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import LoginRequest, UserOut
+from app.services.turnstile import verify_turnstile_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,6 +47,9 @@ def _set_auth_cookies(response: Response, user: User) -> None:
 
 @router.post("/login", response_model=UserOut)
 async def login(payload: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)) -> User:
+    if not await verify_turnstile_token(payload.turnstile_token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verificacao de seguranca falhou")
+
     invalid = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais invalidas")
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()

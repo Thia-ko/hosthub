@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,8 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 interface MeResponse {
   role: "admin" | "client";
 }
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,9 +27,11 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
+      const formData = new FormData(event.currentTarget);
+      const turnstileToken = formData.get("cf-turnstile-response");
       const user = await apiFetch<MeResponse>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstile_token: turnstileToken || null }),
       });
       router.push(user.role === "admin" ? "/admin" : "/app");
       router.refresh();
@@ -39,6 +44,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+      {TURNSTILE_SITE_KEY ? (
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      ) : null}
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Entrar na Hosthub</CardTitle>
@@ -67,6 +75,7 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
+            {TURNSTILE_SITE_KEY ? <div className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} /> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Button type="submit" disabled={loading} className="mt-2">
               {loading ? "Entrando..." : "Entrar"}

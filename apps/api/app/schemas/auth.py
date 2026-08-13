@@ -8,6 +8,7 @@ from app.models.user import UserRole
 class LoginRequest(BaseModel):
     email: str
     password: str
+    turnstile_token: str | None = None
 
 
 class UserOut(BaseModel):

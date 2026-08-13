@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import require_admin
+from app.core.deps import require_admin, require_cf_access_header
 from app.db.session import get_db
 from app.models.theme_setting import (
     DEFAULT_DARK_PRIMARY,
@@ -30,7 +30,7 @@ async def get_theme(db: AsyncSession = Depends(get_db)) -> ThemeSetting:
     )
 
 
-@router.put("", response_model=ThemeSettingsOut)
+@router.put("", response_model=ThemeSettingsOut, dependencies=[Depends(require_cf_access_header)])
 async def update_theme(
     payload: ThemeSettingsUpdateRequest,
     admin: User = Depends(require_admin),

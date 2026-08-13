@@ -1,10 +1,11 @@
 import uuid
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Path, status
+from fastapi import Cookie, Depends, HTTPException, Path, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import ACCESS_COOKIE_NAME, decode_token
 from app.db.session import get_db
 from app.models.instance import Instance
@@ -50,3 +51,10 @@ async def get_owned_instance(
     if user.role != UserRole.ADMIN and instance.owner_user_id != user.id:
         raise not_found
     return instance
+
+
+async def require_cf_access_header(request: Request) -> None:
+    if not settings.CF_ACCESS_TEAM_DOMAIN:
+        return
+    if "cf-access-jwt-assertion" not in request.headers:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso permitido apenas via Cloudflare Access")

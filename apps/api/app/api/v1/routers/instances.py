@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_owned_instance, require_admin
+from app.core.deps import get_current_user, get_owned_instance, require_admin, require_cf_access_header
 from app.core.security import hash_password
 from app.core.slug import slugify
 from app.db.session import get_db
@@ -68,7 +68,7 @@ async def list_instances(
     ]
 
 
-@router.post("", response_model=InstanceCreateResponse)
+@router.post("", response_model=InstanceCreateResponse, dependencies=[Depends(require_cf_access_header)])
 async def create_instance(
     payload: InstanceCreateRequest,
     admin: User = Depends(require_admin),
@@ -115,7 +115,7 @@ async def get_instance(
     return await _detail_out(db, instance)
 
 
-@router.patch("/{instance_id}", response_model=InstanceDetailOut)
+@router.patch("/{instance_id}", response_model=InstanceDetailOut, dependencies=[Depends(require_cf_access_header)])
 async def update_instance(
     payload: InstanceUpdateRequest,
     instance: Instance = Depends(get_owned_instance),
@@ -133,7 +133,7 @@ async def update_instance(
     return await _detail_out(db, instance)
 
 
-@router.delete("/{instance_id}", response_model=InstanceDetailOut)
+@router.delete("/{instance_id}", response_model=InstanceDetailOut, dependencies=[Depends(require_cf_access_header)])
 async def archive_instance(
     instance: Instance = Depends(get_owned_instance),
     admin: User = Depends(require_admin),
