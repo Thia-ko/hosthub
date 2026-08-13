@@ -1,26 +1,46 @@
 services:
   db:
     restart: unless-stopped
-    ports: []
+    ports: !reset []
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hosthub"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   api:
     build:
       context: ./apps/api
-    volumes: []
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    volumes: !reset []
+    command: ["./entrypoint.sh"]
     restart: unless-stopped
-    ports: []
+    ports: !reset []
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   web:
     build:
       context: ./apps/web
-    volumes: []
-    command: ["sh", "-c", "npm run build && npm run start"]
+      target: prod
+    volumes: !reset []
     restart: unless-stopped
-    ports: []
+    ports: !reset []
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   proxy:
     restart: unless-stopped
-    ports:
+    volumes:
+      - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile
+    ports: !override
       - "80:80"
       - "443:443"
