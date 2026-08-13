@@ -14,6 +14,9 @@ export default function AdminHomePage() {
         <Link className="text-sm text-primary hover:underline" href="/admin/templates">
           Templates
         </Link>
+        <Link className="text-sm text-primary hover:underline" href="/admin/theme">
+          Tema
+        </Link>
       </div>
     </div>
   );

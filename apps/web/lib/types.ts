@@ -79,3 +79,10 @@ export interface PromptTemplate {
   created_at: string;
   updated_at: string;
 }
+
+export interface ThemeSettings {
+  light_primary_color: string;
+  light_secondary_color: string;
+  dark_primary_color: string;
+  dark_secondary_color: string;
+}
