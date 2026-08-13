@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+asyncpg://hosthub:hosthub@db:5432/hosthub"
     JWT_SECRET: str = "change-me"
+    COOKIE_SECURE: bool = True
 
     SEED_ADMIN_EMAIL: str = "admin@hosthub.local"
     SEED_ADMIN_PASSWORD: str = "change-me"
