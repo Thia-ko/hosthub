@@ -31,6 +31,9 @@ class Instance(Base):
         String, unique=True, nullable=False, default=lambda: secrets.token_urlsafe(32)
     )
     ai_assist_daily_token_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("prompt_versions.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

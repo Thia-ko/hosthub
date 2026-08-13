@@ -20,3 +20,23 @@ export interface InstanceCreateResponse {
   client_email: string;
   generated_password: string | null;
 }
+
+export type PromptVersionSource = "manual" | "ai_assist" | "template";
+
+export interface PromptVersionSummary {
+  id: string;
+  version_number: number;
+  source: PromptVersionSource;
+  change_note: string | null;
+  created_by_user_id: string;
+  created_at: string;
+}
+
+export interface PromptVersionDetail extends PromptVersionSummary {
+  content: string;
+}
+
+export interface PromptVersionDiffResponse {
+  from: { version_number: number; content: string };
+  to: { version_number: number; content: string };
+}
