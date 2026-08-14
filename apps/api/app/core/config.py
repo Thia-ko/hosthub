@@ -14,7 +14,13 @@ class Settings(BaseSettings):
     AI_ASSIST_API_KEY: str = ""
     AI_ASSIST_BASE_URL: str = "https://api.openai.com/v1"
     AI_ASSIST_MODEL: str = "gpt-4o-mini"
+    AI_ASSIST_TRANSCRIBE_MODEL: str = "whisper-1"
     AI_ASSIST_DAILY_TOKEN_LIMIT_DEFAULT: int = 50000
+
+    EVOLUTION_API_BASE_URL: str = ""
+    EVOLUTION_API_KEY: str = ""
+
+    WHATSBOTMAIS_API_BASE_URL: str = "https://api2.whatsbotmais.com.br"
 
     TURNSTILE_SECRET_KEY: str = ""
     CF_ACCESS_TEAM_DOMAIN: str = ""

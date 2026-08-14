@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.instance import Instance, InstanceStatus
 from app.models.user import User, UserRole
 from app.schemas.instance import (
+    ClientPasswordResetOut,
     InstanceCreateRequest,
     InstanceCreateResponse,
     InstanceDetailOut,
@@ -43,6 +44,7 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
         created_at=instance.created_at,
         ai_assist_daily_token_limit=instance.ai_assist_daily_token_limit,
         webhook_token=instance.webhook_token,
+        whatsapp_instance_name=instance.whatsapp_instance_name,
     )
 
 
@@ -128,6 +130,8 @@ async def update_instance(
         instance.status = payload.status
     if payload.ai_assist_daily_token_limit is not None:
         instance.ai_assist_daily_token_limit = payload.ai_assist_daily_token_limit
+    if payload.whatsapp_instance_name is not None:
+        instance.whatsapp_instance_name = payload.whatsapp_instance_name or None
     await db.commit()
     await db.refresh(instance)
     return await _detail_out(db, instance)
@@ -143,3 +147,38 @@ async def archive_instance(
     await db.commit()
     await db.refresh(instance)
     return await _detail_out(db, instance)
+
+
+@router.post(
+    "/{instance_id}/regenerate-webhook-token",
+    response_model=InstanceDetailOut,
+    dependencies=[Depends(require_cf_access_header)],
+)
+async def regenerate_webhook_token(
+    instance: Instance = Depends(get_owned_instance),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> InstanceDetailOut:
+    instance.webhook_token = secrets.token_urlsafe(32)
+    await db.commit()
+    await db.refresh(instance)
+    return await _detail_out(db, instance)
+
+
+@router.post(
+    "/{instance_id}/reset-client-password",
+    response_model=ClientPasswordResetOut,
+    dependencies=[Depends(require_cf_access_header)],
+)
+async def reset_client_password(
+    instance: Instance = Depends(get_owned_instance),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> ClientPasswordResetOut:
+    owner = await db.get(User, instance.owner_user_id)
+    if owner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente nao encontrado")
+    generated_password = secrets.token_urlsafe(9)
+    owner.password_hash = hash_password(generated_password)
+    await db.commit()
+    return ClientPasswordResetOut(client_email=owner.email, generated_password=generated_password)

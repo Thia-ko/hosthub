@@ -21,6 +21,7 @@ class InstanceOut(BaseModel):
 class InstanceDetailOut(InstanceOut):
     ai_assist_daily_token_limit: int | None
     webhook_token: str
+    whatsapp_instance_name: str | None
 
 
 class InstanceCreateRequest(BaseModel):
@@ -40,3 +41,9 @@ class InstanceUpdateRequest(BaseModel):
     name: str | None = None
     status: InstanceStatus | None = None
     ai_assist_daily_token_limit: int | None = None
+    whatsapp_instance_name: str | None = None
+
+
+class ClientPasswordResetOut(BaseModel):
+    client_email: str
+    generated_password: str

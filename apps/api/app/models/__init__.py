@@ -1,4 +1,6 @@
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
+from app.models.ai_settings import AiSettings
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_template import PromptTemplate
 from app.models.prompt_version import PromptVersion, PromptVersionSource
@@ -15,7 +17,11 @@ __all__ = [
     "PromptVersionSource",
     "AiAssistRequest",
     "AiAssistStatus",
+    "AiSettings",
     "WebhookEvent",
     "PromptTemplate",
     "ThemeSetting",
+    "ConversationMessage",
+    "MessageDirection",
+    "MessageKind",
 ]

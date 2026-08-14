@@ -10,8 +10,8 @@ class HourlyCount(BaseModel):
 
 class DashboardSummary(BaseModel):
     date: date_type
-    total_events: int
-    events_by_hour: list[HourlyCount]
+    total_messages: int
+    messages_by_hour: list[HourlyCount]
     prompt_versions_count: int
     ai_assist_usage_today: int
     ai_assist_daily_limit: int

@@ -5,25 +5,24 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.deps import get_current_user, get_owned_instance
 from app.db.session import get_db
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.instance import Instance
 from app.models.prompt_version import PromptVersion, PromptVersionSource
 from app.models.user import User
-from app.schemas.ai_assist import AiAssistSuggestRequest, AiAssistSuggestResponse, AiAssistUsageOut
+from app.schemas.ai_assist import (
+    AiAssistSandboxReplyRequest,
+    AiAssistSandboxReplyResponse,
+    AiAssistSuggestRequest,
+    AiAssistSuggestResponse,
+    AiAssistUsageOut,
+)
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today, next_reset_at
 from app.services.ai_assist_provider import AiAssistProvider, get_ai_assist_provider
+from app.services.prompt_content import get_current_prompt_content
 
 router = APIRouter(prefix="/instances/{instance_id}/ai-assist", tags=["ai-assist"])
-
-
-async def _get_current_prompt_content(db: AsyncSession, instance: Instance) -> str:
-    if instance.current_prompt_version_id is None:
-        return ""
-    version = await db.get(PromptVersion, instance.current_prompt_version_id)
-    return version.content if version else ""
 
 
 async def _get_request(db: AsyncSession, instance: Instance, request_id: uuid.UUID) -> AiAssistRequest:
@@ -63,13 +62,13 @@ async def suggest(
             headers={"X-Resets-At": next_reset_at().isoformat()},
         )
 
-    if not settings.AI_ASSIST_API_KEY:
+    if not provider.is_configured:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Assistente de IA nao configurado: defina AI_ASSIST_API_KEY",
+            detail="Assistente de IA nao configurado: defina a chave em Configuracoes > IA",
         )
 
-    current_content = await _get_current_prompt_content(db, instance)
+    current_content = await get_current_prompt_content(db, instance)
     try:
         new_content, prompt_tokens, completion_tokens = await provider.suggest(current_content, payload.instruction)
     except httpx.HTTPError:
@@ -149,3 +148,58 @@ async def discard_suggestion(
     ai_request.status = AiAssistStatus.DISCARDED
     await db.commit()
     return {"discarded": True}
+
+
+@router.post("/sandbox-reply", response_model=AiAssistSandboxReplyResponse)
+async def sandbox_reply(
+    payload: AiAssistSandboxReplyRequest,
+    instance: Instance = Depends(get_owned_instance),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    provider: AiAssistProvider = Depends(get_ai_assist_provider),
+) -> AiAssistSandboxReplyResponse:
+    used_today = await get_usage_today(db, instance.id)
+    limit = get_daily_limit(instance)
+    if used_today >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Limite diario de tokens do assistente de IA atingido",
+            headers={"X-Resets-At": next_reset_at().isoformat()},
+        )
+
+    if not provider.is_configured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Assistente de IA nao configurado: defina a chave em Configuracoes > IA",
+        )
+
+    system_prompt = payload.prompt_override or await get_current_prompt_content(db, instance)
+    if not system_prompt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhum prompt para testar: salve uma versao ou escreva algo no editor",
+        )
+
+    history = [{"role": item.role, "content": item.content} for item in payload.history]
+    try:
+        reply, prompt_tokens, completion_tokens = await provider.reply(system_prompt, history, payload.message)
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Nao foi possivel gerar resposta com o provedor de IA configurado",
+        )
+
+    ai_request = AiAssistRequest(
+        instance_id=instance.id,
+        user_id=user.id,
+        instruction=f"[sandbox] {payload.message}",
+        suggested_content=reply,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=prompt_tokens + completion_tokens,
+        status=AiAssistStatus.DISCARDED,
+    )
+    db.add(ai_request)
+    await db.commit()
+
+    return AiAssistSandboxReplyResponse(reply=reply, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)

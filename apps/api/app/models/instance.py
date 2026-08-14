@@ -31,6 +31,7 @@ class Instance(Base):
         String, unique=True, nullable=False, default=lambda: secrets.token_urlsafe(32)
     )
     ai_assist_daily_token_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    whatsapp_instance_name: Mapped[str | None] = mapped_column(String, nullable=True)
     current_prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prompt_versions.id"), nullable=True
     )

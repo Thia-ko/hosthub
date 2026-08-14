@@ -58,3 +58,14 @@ async def require_cf_access_header(request: Request) -> None:
         return
     if "cf-access-jwt-assertion" not in request.headers:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso permitido apenas via Cloudflare Access")
+
+
+async def get_instance_by_webhook_token(
+    webhook_token: str = Path(...),
+    db: AsyncSession = Depends(get_db),
+) -> Instance:
+    result = await db.execute(select(Instance).where(Instance.webhook_token == webhook_token))
+    instance = result.scalar_one_or_none()
+    if instance is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instancia nao encontrada")
+    return instance
