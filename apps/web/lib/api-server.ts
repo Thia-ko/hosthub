@@ -11,10 +11,14 @@ export interface MeResponse {
 
 export async function getCurrentUser(): Promise<MeResponse | null> {
   const cookieStore = await cookies();
-  const response = await fetch(`${INTERNAL_API_URL}/api/v1/auth/me`, {
-    headers: { cookie: cookieStore.toString() },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
-  return (await response.json()) as MeResponse;
+  try {
+    const response = await fetch(`${INTERNAL_API_URL}/api/v1/auth/me`, {
+      headers: { cookie: cookieStore.toString() },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as MeResponse;
+  } catch {
+    return null;
+  }
 }

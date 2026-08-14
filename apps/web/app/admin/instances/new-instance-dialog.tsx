@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { FormStatus } from "@/components/state";
+import { apiFetch, errorMessage } from "@/lib/api-client";
 import type { InstanceCreateResponse } from "@/lib/types";
 
 export function NewInstanceDialog({ onCreated }: { onCreated: () => void }) {
@@ -48,7 +49,7 @@ export function NewInstanceDialog({ onCreated }: { onCreated: () => void }) {
         resetForm();
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Nao foi possivel criar a instancia");
+      setError(errorMessage(err, "Nao foi possivel criar a instancia."));
     } finally {
       setLoading(false);
     }
@@ -133,7 +134,7 @@ export function NewInstanceDialog({ onCreated }: { onCreated: () => void }) {
           <p className="text-xs text-muted-foreground">
             Uma senha sera gerada automaticamente para um cliente novo.
           </p>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <FormStatus tone="error">{error}</FormStatus> : null}
           <DialogFooter>
             <Button type="submit" disabled={loading}>
               {loading ? "Criando..." : "Criar instancia"}

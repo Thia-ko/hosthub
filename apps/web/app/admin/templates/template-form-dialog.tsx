@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { FormStatus } from "@/components/state";
+import { GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
 import type { PromptTemplate } from "@/lib/types";
 
 export function TemplateFormDialog({
@@ -56,9 +58,10 @@ export function TemplateFormDialog({
         await apiFetch("/prompt-templates", { method: "POST", body });
       }
       setOpen(false);
+      toast.success(template ? "Template atualizado." : "Template criado.");
       onSaved();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Nao foi possivel salvar");
+      setError(errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE));
     } finally {
       setSaving(false);
     }
@@ -105,7 +108,7 @@ export function TemplateFormDialog({
               onChange={(event) => setContent(event.target.value)}
             />
           </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ? <FormStatus tone="error">{error}</FormStatus> : null}
           <DialogFooter>
             <Button type="submit" disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}

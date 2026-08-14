@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/api-server";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppShell } from "@/components/app-shell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -8,12 +8,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (user.role !== "admin") redirect("/app");
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <p className="text-sm text-muted-foreground">Painel administrativo - {user.full_name}</p>
-        <ThemeToggle />
-      </header>
-      <main className="p-6">{children}</main>
-    </div>
+    <AppShell section="admin" user={{ fullName: user.full_name, email: user.email, role: user.role }}>
+      {children}
+    </AppShell>
   );
 }

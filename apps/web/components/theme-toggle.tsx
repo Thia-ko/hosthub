@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -16,6 +17,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="sm"
+      className={cn("gap-2", className)}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
       {resolvedTheme === "dark" ? "Modo claro" : "Modo escuro"}

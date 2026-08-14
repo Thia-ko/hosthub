@@ -15,6 +15,14 @@ export class ApiError extends Error {
   }
 }
 
+export const GENERIC_LOAD_ERROR_MESSAGE = "Nao foi possivel carregar os dados.";
+export const GENERIC_SAVE_ERROR_MESSAGE = "Nao foi possivel salvar.";
+
+/** Extracts a user-facing message from a caught value, falling back for non-API errors. */
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
 async function parseBody(response: Response): Promise<unknown> {
   const text = await response.text();
   if (!text) return null;
@@ -45,7 +53,8 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
       response = await rawFetch(path, init);
     } else {
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?expired=1&next=${next}`;
       }
       throw new ApiError(401, { detail: "Sessao expirada" });
     }

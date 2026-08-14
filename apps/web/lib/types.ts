@@ -13,12 +13,18 @@ export interface Instance {
 export interface InstanceDetail extends Instance {
   ai_assist_daily_token_limit: number | null;
   webhook_token: string;
+  whatsapp_instance_name: string | null;
 }
 
 export interface InstanceCreateResponse {
   instance: InstanceDetail;
   client_email: string;
   generated_password: string | null;
+}
+
+export interface ClientPasswordResetOut {
+  client_email: string;
+  generated_password: string;
 }
 
 export type PromptVersionSource = "manual" | "ai_assist" | "template";
@@ -54,6 +60,17 @@ export interface AiAssistSuggestResponse {
   completion_tokens: number;
 }
 
+export interface SandboxMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AiAssistSandboxReplyResponse {
+  reply: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
 export interface WebhookEvent {
   id: string;
   payload_json: unknown;
@@ -62,8 +79,8 @@ export interface WebhookEvent {
 
 export interface DashboardSummary {
   date: string;
-  total_events: number;
-  events_by_hour: { hour: number; count: number }[];
+  total_messages: number;
+  messages_by_hour: { hour: number; count: number }[];
   prompt_versions_count: number;
   ai_assist_usage_today: number;
   ai_assist_daily_limit: number;
@@ -85,4 +102,33 @@ export interface ThemeSettings {
   light_secondary_color: string;
   dark_primary_color: string;
   dark_secondary_color: string;
+}
+
+export interface AiSettings {
+  base_url: string;
+  model: string;
+  transcribe_model: string;
+  api_key_source: "database" | "env" | "none";
+  updated_at: string | null;
+}
+
+export type MessageDirection = "inbound" | "outbound";
+export type MessageKind = "text" | "audio" | "image";
+
+export interface ConversationMessage {
+  id: string;
+  direction: MessageDirection;
+  kind: MessageKind;
+  text: string;
+  media_url: string | null;
+  created_at: string;
+}
+
+export interface ConversationSummary {
+  sender_number: string;
+  last_message_text: string;
+  last_message_kind: MessageKind;
+  last_direction: MessageDirection;
+  last_message_at: string;
+  message_count: number;
 }

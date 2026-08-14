@@ -1,69 +1,70 @@
 "use client";
 
-import { useEffect, useState, use as usePromise } from "react";
-import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { FormStatus } from "@/components/state";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ResetClientPasswordButton } from "@/components/reset-client-password-button";
+import { GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
+import { useInstanceDetail } from "@/lib/instance-detail-context";
 import type { InstanceDetail, InstanceStatus } from "@/lib/types";
 
-export default function AdminInstanceDetailPage({
-  params,
-}: {
-  params: Promise<{ instanceId: string }>;
-}) {
-  const { instanceId } = usePromise(params);
-  const [instance, setInstance] = useState<InstanceDetail | null>(null);
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState<InstanceStatus>("active");
-  const [tokenLimit, setTokenLimit] = useState("");
+export default function AdminInstanceGeneralPage() {
+  const { instance, reload } = useInstanceDetail();
+  const [name, setName] = useState(instance.name);
+  const [status, setStatus] = useState<InstanceStatus>(instance.status);
+  const [tokenLimit, setTokenLimit] = useState(instance.ai_assist_daily_token_limit?.toString() ?? "");
+  const [whatsappInstanceName, setWhatsappInstanceName] = useState(instance.whatsapp_instance_name ?? "");
+  const [syncedInstance, setSyncedInstance] = useState<InstanceDetail>(instance);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState(false);
 
-  useEffect(() => {
-    apiFetch<InstanceDetail>(`/instances/${instanceId}`).then((data) => {
-      setInstance(data);
-      setName(data.name);
-      setStatus(data.status);
-      setTokenLimit(data.ai_assist_daily_token_limit?.toString() ?? "");
-    });
-  }, [instanceId]);
+  if (instance !== syncedInstance) {
+    setSyncedInstance(instance);
+    setName(instance.name);
+    setStatus(instance.status);
+    setTokenLimit(instance.ai_assist_daily_token_limit?.toString() ?? "");
+    setWhatsappInstanceName(instance.whatsapp_instance_name ?? "");
+  }
 
   async function handleSave() {
     setSaving(true);
-    setMessage(null);
+    setSaveStatus(null);
     try {
-      const updated = await apiFetch<InstanceDetail>(`/instances/${instanceId}`, {
+      await apiFetch(`/instances/${instance.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           name,
           status,
           ai_assist_daily_token_limit: tokenLimit ? Number(tokenLimit) : null,
+          whatsapp_instance_name: whatsappInstanceName,
         }),
       });
-      setInstance(updated);
-      setMessage("Alteracoes salvas.");
+      reload();
+      setSaveStatus({ tone: "success", text: "Alteracoes salvas." });
+      toast.success("Alteracoes salvas.");
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : "Nao foi possivel salvar");
+      setSaveStatus({ tone: "error", text: errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE) });
     } finally {
       setSaving(false);
     }
   }
 
-  if (!instance) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>;
+  function handleSaveClick() {
+    if (status === "archived" && instance.status !== "archived") {
+      setConfirmArchive(true);
+      return;
+    }
+    handleSave();
   }
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{instance.name}</h1>
-        <Link className="text-sm text-muted-foreground hover:underline" href={`/admin/instances/${instance.id}/dashboard`}>
-          Ver dashboard
-        </Link>
-      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="name">Nome</Label>
         <Input id="name" value={name} onChange={(event) => setName(event.target.value)} />
@@ -92,23 +93,42 @@ export default function AdminInstanceDetailPage({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label>Cliente responsavel</Label>
-        <p className="text-sm text-muted-foreground">{instance.owner_email}</p>
+        <Label htmlFor="whatsappInstanceName">Resposta automatica via WhatsApp</Label>
+        <Input
+          id="whatsappInstanceName"
+          placeholder="Sem WhatsApp conectado"
+          value={whatsappInstanceName}
+          onChange={(event) => setWhatsappInstanceName(event.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          WhatsBotMais (API oficial): a credencial ja vem em cada atendimento, preencha qualquer valor (ex:
+          &quot;ativo&quot;) so para ligar a resposta automatica. Evolution API: preencha com o nome exato da
+          instancia configurada la. Deixe em branco para so registrar os eventos sem responder.
+        </p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label>URL do webhook</Label>
-        <p className="break-all text-sm text-muted-foreground">/webhooks/{instance.webhook_token}</p>
-        <Link
-          className="w-fit text-sm text-muted-foreground hover:underline"
-          href={`/admin/instances/${instance.id}/webhook`}
-        >
-          Ver eventos recebidos
-        </Link>
+        <Label>Cliente responsavel</Label>
+        <p className="text-sm text-muted-foreground">{instance.owner_email}</p>
+        <ResetClientPasswordButton instanceId={instance.id} clientEmail={instance.owner_email} />
       </div>
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-      <Button onClick={handleSave} disabled={saving} className="w-fit">
+      {saveStatus ? <FormStatus tone={saveStatus.tone}>{saveStatus.text}</FormStatus> : null}
+      <Button onClick={handleSaveClick} disabled={saving} className="w-fit">
         {saving ? "Salvando..." : "Salvar alteracoes"}
       </Button>
+      <ConfirmDialog
+        open={confirmArchive}
+        onOpenChange={setConfirmArchive}
+        title="Arquivar instancia"
+        description={
+          <>
+            Arquivar <strong>{instance.name}</strong> pausa o agente de IA: ele para de responder aos clientes
+            no WhatsApp imediatamente. Voce pode reativar depois trocando o status de volta.
+          </>
+        }
+        confirmLabel="Arquivar"
+        destructive
+        onConfirm={handleSave}
+      />
     </div>
   );
 }

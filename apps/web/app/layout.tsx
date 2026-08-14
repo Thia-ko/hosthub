@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { hexToOklch } from "@/lib/color";
+import { getThemeSettings } from "@/lib/theme-settings";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -19,25 +20,6 @@ export const metadata: Metadata = {
   description: "Plataforma de agentes de IA para atendimento",
 };
 
-interface ThemeSettings {
-  light_primary_color: string;
-  light_secondary_color: string;
-  dark_primary_color: string;
-  dark_secondary_color: string;
-}
-
-const INTERNAL_API_URL = process.env.INTERNAL_API_URL ?? "http://api:8000";
-
-async function getThemeSettings(): Promise<ThemeSettings | null> {
-  try {
-    const response = await fetch(`${INTERNAL_API_URL}/api/v1/theme`, { cache: "no-store" });
-    if (!response.ok) return null;
-    return (await response.json()) as ThemeSettings;
-  } catch {
-    return null;
-  }
-}
-
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const theme = await getThemeSettings();
 
@@ -49,7 +31,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>{themeCss ? <style dangerouslySetInnerHTML={{ __html: themeCss }} /> : null}</head>

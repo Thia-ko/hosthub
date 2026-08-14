@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/api-server";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppShell } from "@/components/app-shell";
+import { OwnInstanceProvider } from "@/lib/instance-context";
+import { InstanceSwitcherSlot } from "@/components/instance-switcher-slot";
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -8,12 +10,14 @@ export default async function ClientLayout({ children }: { children: React.React
   if (user.role !== "client") redirect("/admin");
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <p className="text-sm text-muted-foreground">Ola, {user.full_name}</p>
-        <ThemeToggle />
-      </header>
-      <main className="p-6">{children}</main>
-    </div>
+    <OwnInstanceProvider>
+      <AppShell
+        section="app"
+        user={{ fullName: user.full_name, email: user.email, role: user.role }}
+        topBar={<InstanceSwitcherSlot />}
+      >
+        {children}
+      </AppShell>
+    </OwnInstanceProvider>
   );
 }

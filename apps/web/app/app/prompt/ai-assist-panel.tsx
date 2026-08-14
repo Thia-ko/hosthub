@@ -6,7 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DiffView } from "@/components/diff-view";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { FormStatus } from "@/components/state";
+import { apiFetch, errorMessage } from "@/lib/api-client";
 import type { AiAssistSuggestResponse, AiAssistUsage } from "@/lib/types";
 
 export function AiAssistPanel({
@@ -27,7 +28,9 @@ export function AiAssistPanel({
 
   useEffect(() => {
     if (!open) return;
-    apiFetch<AiAssistUsage>(`/instances/${instanceId}/ai-assist/usage`).then(setUsage);
+    apiFetch<AiAssistUsage>(`/instances/${instanceId}/ai-assist/usage`)
+      .then(setUsage)
+      .catch(() => setUsage(null));
   }, [open, instanceId]);
 
   const overLimit = usage ? usage.used_today >= usage.limit : false;
@@ -41,9 +44,11 @@ export function AiAssistPanel({
         body: JSON.stringify({ instruction }),
       });
       setSuggestion(result);
-      apiFetch<AiAssistUsage>(`/instances/${instanceId}/ai-assist/usage`).then(setUsage);
+      apiFetch<AiAssistUsage>(`/instances/${instanceId}/ai-assist/usage`)
+        .then(setUsage)
+        .catch(() => {});
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Nao foi possivel gerar a sugestao");
+      setError(errorMessage(err, "Nao foi possivel gerar a sugestao."));
     } finally {
       setLoading(false);
     }
@@ -61,7 +66,7 @@ export function AiAssistPanel({
       setOpen(false);
       onApplied();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Nao foi possivel aplicar a sugestao");
+      setError(errorMessage(err, "Nao foi possivel aplicar a sugestao."));
     } finally {
       setLoading(false);
     }
@@ -106,7 +111,7 @@ export function AiAssistPanel({
               onChange={(event) => setInstruction(event.target.value)}
               className="min-h-32"
             />
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {error ? <FormStatus tone="error">{error}</FormStatus> : null}
             <Button onClick={handleGenerate} disabled={loading || overLimit || !instruction}>
               {loading ? "Gerando..." : "Gerar sugestao"}
             </Button>
@@ -115,7 +120,7 @@ export function AiAssistPanel({
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">Pre-visualizacao da alteracao sugerida:</p>
             <DiffView from={currentContent} to={suggestion.suggested_content} />
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {error ? <FormStatus tone="error">{error}</FormStatus> : null}
             <div className="flex gap-2">
               <Button onClick={handleApply} disabled={loading}>
                 Aplicar

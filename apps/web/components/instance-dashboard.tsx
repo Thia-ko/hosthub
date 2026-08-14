@@ -1,32 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
+import { ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
+import { useAsyncData } from "@/lib/use-async-data";
 import type { DashboardSummary } from "@/lib/types";
 
 const chartConfig = {
   count: {
-    label: "Eventos",
+    label: "Mensagens",
     color: "var(--primary)",
   },
 } satisfies ChartConfig;
 
 export function InstanceDashboard({ instanceId }: { instanceId: string }) {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const {
+    data: summary,
+    error,
+    loading,
+    reload,
+  } = useAsyncData(() => apiFetch<DashboardSummary>(`/instances/${instanceId}/dashboard/summary`), [instanceId]);
 
-  useEffect(() => {
-    apiFetch<DashboardSummary>(`/instances/${instanceId}/dashboard/summary`).then(setSummary);
-  }, [instanceId]);
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={reload} />;
+  if (!summary) return null;
 
-  if (!summary) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>;
-  }
-
-  const chartData = summary.events_by_hour.map((entry) => ({
+  const chartData = summary.messages_by_hour.map((entry) => ({
     hour: `${entry.hour.toString().padStart(2, "0")}h`,
     count: entry.count,
   }));
@@ -41,10 +43,10 @@ export function InstanceDashboard({ instanceId }: { instanceId: string }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Eventos hoje</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Mensagens de clientes hoje</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{summary.total_events}</p>
+            <p className="text-2xl font-semibold">{summary.total_messages}</p>
           </CardContent>
         </Card>
         <Card>
@@ -72,7 +74,7 @@ export function InstanceDashboard({ instanceId }: { instanceId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Atendimentos por hora ({summary.date})</CardTitle>
+          <CardTitle>Mensagens de clientes por hora ({summary.date})</CardTitle>
         </CardHeader>
         <CardContent>
           <ChartContainer config={chartConfig} className="h-64 w-full">
@@ -84,8 +86,8 @@ export function InstanceDashboard({ instanceId }: { instanceId: string }) {
             </BarChart>
           </ChartContainer>
           <p className="mt-2 text-xs text-muted-foreground">
-            Metricas baseadas nos eventos brutos recebidos via webhook; serao refinadas quando o formato de
-            mensagens da integracao for definido.
+            Conta apenas mensagens reais de clientes (texto, audio e imagem reconhecidos) - ecos,
+            atualizacoes de status e midia sem suporte de resposta nao entram na contagem.
           </p>
         </CardContent>
       </Card>
