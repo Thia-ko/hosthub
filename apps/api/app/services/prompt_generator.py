@@ -274,29 +274,32 @@ async def generate_prompt_from_data(db, instance: Instance) -> PromptVersion | N
     return version
 
 
+def _is_auto_gen_due(instance: Instance, analyzed_count: int, now: datetime) -> bool:
+    """Pure decision: has the instance's configured trigger (time interval or conversation-count
+    threshold) fired? Split out from `maybe_auto_generate_prompt` so the branching is unit
+    testable without a DB session."""
+    time_mode = bool(instance.auto_gen_interval) and instance.auto_gen_interval != "off"
+    if time_mode:
+        min_delta = _AUTO_GEN_INTERVALS.get(instance.auto_gen_interval)
+        if min_delta is None:
+            return False
+        if instance.last_auto_gen_at is None:
+            return True
+        return (now - instance.last_auto_gen_at) >= min_delta
+
+    threshold = instance.auto_gen_conversation_threshold or 5
+    return analyzed_count != 0 and analyzed_count % threshold == 0
+
+
 async def maybe_auto_generate_prompt(db, instance: Instance) -> None:
     """Mirrors the analyzer's auto-trigger: conversation-count threshold (default) or a
     configurable time interval, whichever the instance is set to use."""
     if not instance.auto_generate_prompt:
         return
 
-    time_mode = instance.auto_gen_interval and instance.auto_gen_interval != "off"
-    if time_mode:
-        min_delta = _AUTO_GEN_INTERVALS.get(instance.auto_gen_interval)
-        if min_delta is None:
-            return
-        elapsed = (
-            datetime.now(timezone.utc) - instance.last_auto_gen_at
-            if instance.last_auto_gen_at
-            else None
-        )
-        if elapsed is not None and elapsed < min_delta:
-            return
-    else:
-        analyzed = await _analyzed_thread_count(db, instance.id)
-        threshold = instance.auto_gen_conversation_threshold or 5
-        if analyzed == 0 or analyzed % threshold != 0:
-            return
+    analyzed_count = await _analyzed_thread_count(db, instance.id)
+    if not _is_auto_gen_due(instance, analyzed_count, datetime.now(timezone.utc)):
+        return
 
     # Skip if there's already an un-reviewed pending prompt waiting for approval.
     existing_pending = await db.scalar(
