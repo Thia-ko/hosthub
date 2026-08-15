@@ -14,21 +14,26 @@ import { PendingPromptBanner } from "./pending-prompt-banner";
 import { PromptSandbox } from "@/components/prompt-sandbox";
 import { PENDING_TEMPLATE_KEY } from "@/lib/constants";
 
-export default function PromptEditorView() {
-  const { instances, selectedId, error: instancesError, reload: reloadInstances } = useOwnInstances();
+export function PromptEditorView({ instanceId }: { instanceId: string }) {
+  const [pendingTemplate] = useState(() => {
+    const raw = sessionStorage.getItem(PENDING_TEMPLATE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(PENDING_TEMPLATE_KEY);
+    return JSON.parse(raw) as { content: string; title: string };
+  });
   const [current, setCurrent] = useState<PromptVersionDetail | null>(null);
-  const [content, setContent] = useState("");
-  const [changeNote, setChangeNote] = useState("");
-  const [pendingSource, setPendingSource] = useState<"manual" | "template">("manual");
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState(pendingTemplate?.content ?? "");
+  const [changeNote, setChangeNote] = useState(pendingTemplate ? `Template: ${pendingTemplate.title}` : "");
+  const [pendingSource, setPendingSource] = useState<"manual" | "template">(pendingTemplate ? "template" : "manual");
+  const [loading, setLoading] = useState(!pendingTemplate);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  const loadCurrentVersion = useCallback((instanceId: string) => {
+  const loadCurrentVersion = useCallback((id: string) => {
     setLoading(true);
     setLoadError(null);
-    apiFetch<PromptVersionDetail[]>(`/instances/${instanceId}/prompt-versions`)
+    apiFetch<PromptVersionDetail[]>(`/instances/${id}/prompt-versions`)
       .then((versions) => {
         const latest = versions[0];
         if (!latest) {
@@ -36,7 +41,7 @@ export default function PromptEditorView() {
           setContent("");
           return;
         }
-        return apiFetch<PromptVersionDetail>(`/instances/${instanceId}/prompt-versions/${latest.id}`).then(
+        return apiFetch<PromptVersionDetail>(`/instances/${id}/prompt-versions/${latest.id}`).then(
           (detail) => {
             setCurrent(detail);
             setContent(detail.content);
@@ -50,26 +55,16 @@ export default function PromptEditorView() {
   }, []);
 
   useEffect(() => {
-    if (!selectedId) return;
-    const pending = sessionStorage.getItem(PENDING_TEMPLATE_KEY);
-    if (pending) {
-      const { content: templateContent, title } = JSON.parse(pending) as { content: string; title: string };
-      setContent(templateContent);
-      setChangeNote(`Template: ${title}`);
-      setPendingSource("template");
-      sessionStorage.removeItem(PENDING_TEMPLATE_KEY);
-      setLoading(false);
-      return;
-    }
-    loadCurrentVersion(selectedId);
-  }, [selectedId, loadCurrentVersion]);
+    if (pendingTemplate) return;
+    loadCurrentVersion(instanceId);
+  }, [instanceId, loadCurrentVersion, pendingTemplate]);
+
 
   async function handleSave() {
-    if (!selectedId) return;
     setSaving(true);
     setSaveStatus(null);
     try {
-      const version = await apiFetch<PromptVersionDetail>(`/instances/${selectedId}/prompt-versions`, {
+      const version = await apiFetch<PromptVersionDetail>(`/instances/${instanceId}/prompt-versions`, {
         method: "POST",
         body: JSON.stringify({ content, change_note: changeNote || null, source: pendingSource }),
       });
@@ -84,46 +79,30 @@ export default function PromptEditorView() {
     }
   }
 
-  if (instancesError) {
-    return <ErrorState message={instancesError} onRetry={reloadInstances} />;
-  }
-
-  if (instances === null) {
-    return <LoadingState />;
-  }
-
-  if (instances.length === 0) {
-    return <EmptyState title="Nenhuma instancia associada a sua conta ainda." />;
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Prompt da IA</h1>
-        {selectedId ? (
-          <div className="flex items-center gap-2">
-            <PromptSandbox instanceId={selectedId} promptContent={content} />
-            <AiAssistPanel
-              instanceId={selectedId}
-              currentContent={content}
-              onApplied={() => loadCurrentVersion(selectedId)}
-            />
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <PromptSandbox instanceId={instanceId} promptContent={content} />
+          <AiAssistPanel
+            instanceId={instanceId}
+            currentContent={content}
+            onApplied={() => loadCurrentVersion(instanceId)}
+          />
+        </div>
       </div>
       {loading ? <LoadingState /> : null}
       {!loading && loadError ? (
-        <ErrorState message={loadError} onRetry={() => selectedId && loadCurrentVersion(selectedId)} />
+        <ErrorState message={loadError} onRetry={() => loadCurrentVersion(instanceId)} />
       ) : null}
       {!loading && !loadError ? (
         <>
-          {selectedId ? (
-            <PendingPromptBanner
-              instanceId={selectedId}
-              currentContent={current?.content ?? ""}
-              onResolved={() => loadCurrentVersion(selectedId)}
-            />
-          ) : null}
+          <PendingPromptBanner
+            instanceId={instanceId}
+            currentContent={current?.content ?? ""}
+            onResolved={() => loadCurrentVersion(instanceId)}
+          />
           <p className="text-sm text-muted-foreground">
             {current ? `Versao atual: ${current.version_number}` : "Nenhuma versao salva ainda."}
           </p>
@@ -144,4 +123,19 @@ export default function PromptEditorView() {
       ) : null}
     </div>
   );
+}
+
+export default function PromptEditorPage() {
+  const { instances, selectedId, error: instancesError, reload: reloadInstances } = useOwnInstances();
+
+  if (instancesError) {
+    return <ErrorState message={instancesError} onRetry={reloadInstances} />;
+  }
+  if (instances === null) {
+    return <LoadingState />;
+  }
+  if (instances.length === 0 || !selectedId) {
+    return <EmptyState title="Nenhuma instancia associada a sua conta ainda." />;
+  }
+  return <PromptEditorView key={selectedId} instanceId={selectedId} />;
 }

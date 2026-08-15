@@ -478,7 +478,22 @@ function InstanceData({ instanceId }: { instanceId: string }) {
   );
 }
 
-export default function DadosColetadosView() {
+export function DadosColetadosView({ instanceId }: { instanceId: string }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold">Dados coletados</h1>
+        <p className="text-sm text-muted-foreground">
+          Informacoes extraidas automaticamente das conversas do WhatsApp para manter o prompt do agente
+          atualizado.
+        </p>
+      </div>
+      <InstanceData instanceId={instanceId} />
+    </div>
+  );
+}
+
+export default function DadosColetadosPage() {
   const { instances, selectedId, error, reload } = useOwnInstances();
 
   if (error) return <ErrorState message={error} onRetry={reload} />;
@@ -493,16 +508,5 @@ export default function DadosColetadosView() {
     );
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Dados coletados</h1>
-        <p className="text-sm text-muted-foreground">
-          Informacoes extraidas automaticamente das conversas do WhatsApp para manter o prompt do agente
-          atualizado.
-        </p>
-      </div>
-      <InstanceData instanceId={selectedId} />
-    </div>
-  );
+  return <DadosColetadosView instanceId={selectedId} />;
 }

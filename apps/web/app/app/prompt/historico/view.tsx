@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,26 +20,18 @@ const SOURCE_LABEL: Record<PromptVersionSource, string> = {
   auto_generated: "Geracao automatica",
 };
 
-export default function PromptHistoryView() {
+export function PromptHistoryView({ instanceId, basePath }: { instanceId: string; basePath: string }) {
   const router = useRouter();
-  const { instances, selectedId, error: instancesError, reload: reloadInstances } = useOwnInstances();
   const {
     data: versions,
     error: versionsError,
     loading: versionsLoading,
     reload: reloadVersions,
   } = useAsyncData(
-    () =>
-      selectedId
-        ? apiFetch<PromptVersionSummary[]>(`/instances/${selectedId}/prompt-versions`)
-        : Promise.resolve([]),
-    [selectedId]
+    () => apiFetch<PromptVersionSummary[]>(`/instances/${instanceId}/prompt-versions`),
+    [instanceId]
   );
   const [selected, setSelected] = useState<string[]>([]);
-
-  useEffect(() => {
-    setSelected([]);
-  }, [selectedId]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -50,30 +42,13 @@ export default function PromptHistoryView() {
   }
 
   function openDiff() {
-    if (selected.length !== 2 || !selectedId || !versions) return;
+    if (selected.length !== 2 || !versions) return;
     const [a, b] = selected;
     const aVersion = versions.find((v) => v.id === a);
     const bVersion = versions.find((v) => v.id === b);
     if (!aVersion || !bVersion) return;
     const [from, to] = aVersion.version_number < bVersion.version_number ? [a, b] : [b, a];
-    router.push(`/app/prompt/diff?instance=${selectedId}&from=${from}&to=${to}`);
-  }
-
-  if (instancesError) {
-    return <ErrorState message={instancesError} onRetry={reloadInstances} />;
-  }
-
-  if (instances === null) {
-    return <LoadingState />;
-  }
-
-  if (instances.length === 0 || !selectedId) {
-    return (
-      <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">Historico de versoes</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
-      </div>
-    );
+    router.push(`${basePath}/diff?instance=${instanceId}&from=${from}&to=${to}`);
   }
 
   return (
@@ -140,4 +115,24 @@ export default function PromptHistoryView() {
       ) : null}
     </div>
   );
+}
+
+export default function PromptHistoryPage() {
+  const { instances, selectedId, error: instancesError, reload: reloadInstances } = useOwnInstances();
+
+  if (instancesError) {
+    return <ErrorState message={instancesError} onRetry={reloadInstances} />;
+  }
+  if (instances === null) {
+    return <LoadingState />;
+  }
+  if (instances.length === 0 || !selectedId) {
+    return (
+      <div className="flex flex-col gap-2">
+        <h1 className="text-xl font-semibold">Historico de versoes</h1>
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+      </div>
+    );
+  }
+  return <PromptHistoryView key={selectedId} instanceId={selectedId} basePath="/app/prompt" />;
 }

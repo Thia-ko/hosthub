@@ -5,5 +5,5 @@ import { InstanceDashboard } from "@/components/instance-dashboard";
 
 export default function AdminInstanceDashboardPage({ params }: { params: Promise<{ instanceId: string }> }) {
   const { instanceId } = usePromise(params);
-  return <InstanceDashboard instanceId={instanceId} />;
+  return <InstanceDashboard instanceId={instanceId} promptHref={`/admin/instances/${instanceId}/prompt`} />;
 }
