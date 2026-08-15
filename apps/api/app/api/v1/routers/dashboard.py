@@ -12,6 +12,7 @@ from app.models.conversation_message import ConversationMessage, MessageDirectio
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_version import PromptVersion
+from app.models.satisfaction_response import SatisfactionResponse
 from app.schemas.dashboard import AdminDashboardOverview, DashboardSummary, HourlyCount
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 
@@ -107,6 +108,14 @@ async def get_summary(
 
     ai_assist_usage_today = await get_usage_today(db, instance.id)
 
+    csat_average, csat_response_count = (
+        await db.execute(
+            select(func.avg(SatisfactionResponse.rating), func.count(SatisfactionResponse.rating)).where(
+                SatisfactionResponse.instance_id == instance.id, SatisfactionResponse.rating.is_not(None)
+            )
+        )
+    ).one()
+
     return DashboardSummary(
         date=target_date,
         total_messages=total_messages,
@@ -114,4 +123,6 @@ async def get_summary(
         prompt_versions_count=prompt_versions_count,
         ai_assist_usage_today=ai_assist_usage_today,
         ai_assist_daily_limit=get_daily_limit(instance),
+        csat_average=round(float(csat_average), 2) if csat_average is not None else None,
+        csat_response_count=csat_response_count,
     )

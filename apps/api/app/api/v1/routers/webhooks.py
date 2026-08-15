@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_instance_by_webhook_token
@@ -11,12 +13,14 @@ from app.models.conversation_message import ConversationMessage, MessageDirectio
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_version import PromptVersion
+from app.models.satisfaction_response import SatisfactionResponse
 from app.models.webhook_event import WebhookEvent
 from app.schemas.instance_prompt import InstancePromptOut
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 from app.services.ai_assist_provider import get_ai_assist_provider
 from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.conversation_threads import get_or_create_thread
+from app.services.csat import CSAT_THANKS_MESSAGE, parse_rating
 from app.services.escalation import customer_requests_handoff, split_escalation_tag
 from app.services.outbound_webhooks import MESSAGE_RECEIVED, THREAD_ESCALATED, dispatch_event
 from app.services.prompt_content import get_current_prompt_content
@@ -36,6 +40,48 @@ _EXCLUDED_HEADERS = {"cookie", "authorization", "host", "connection", "content-l
 _MESSAGE_KIND_BY_MEDIA_KIND = {None: MessageKind.TEXT, "audio": MessageKind.AUDIO, "image": MessageKind.IMAGE}
 
 _HANDOFF_ACK_MESSAGE = "Entendido! Vou te transferir para um atendente humano, que vai continuar por aqui em breve."
+
+
+async def _maybe_capture_csat(db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage) -> bool:
+    """If this thread has an unanswered CSAT request pending and the message contains a 1-5
+    rating, records it and thanks the customer - skipping the normal AI reply for this message.
+    Returns True when it handled the message (caller should not run the auto-reply flow)."""
+    pending = await db.scalar(
+        select(SatisfactionResponse)
+        .where(
+            SatisfactionResponse.instance_id == instance.id,
+            SatisfactionResponse.sender_number == parsed.sender_number,
+            SatisfactionResponse.rating.is_(None),
+        )
+        .order_by(SatisfactionResponse.requested_at.desc())
+        .limit(1)
+    )
+    if pending is None:
+        return False
+    rating = parse_rating(parsed.text)
+    if rating is None:
+        return False
+
+    pending.rating = rating
+    pending.response_text = parsed.text
+    pending.responded_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    try:
+        await send_reply(instance, parsed.sender_number, CSAT_THANKS_MESSAGE, parsed.whatsbotmais_token)
+        db.add(
+            ConversationMessage(
+                instance_id=instance.id,
+                sender_number=parsed.sender_number,
+                direction=MessageDirection.OUTBOUND,
+                kind=MessageKind.TEXT,
+                text=CSAT_THANKS_MESSAGE,
+            )
+        )
+        await db.commit()
+    except WhatsAppChannelError:
+        logger.exception("Failed to send CSAT thanks message for instance %s", instance.id)
+    return True
 
 
 async def _handoff_to_human(
@@ -194,12 +240,14 @@ async def receive_webhook(
             MESSAGE_RECEIVED,
             {"sender_number": parsed.sender_number, "text": parsed.text, "media_kind": parsed.media_kind},
         )
-        was_escalated = thread.escalated
-        await _maybe_auto_reply(db, instance, parsed, thread)
-        if thread.escalated and not was_escalated:
-            background_tasks.add_task(
-                dispatch_event, instance.id, THREAD_ESCALATED, {"sender_number": parsed.sender_number}
-            )
+        csat_handled = await _maybe_capture_csat(db, instance, parsed)
+        if not csat_handled:
+            was_escalated = thread.escalated
+            await _maybe_auto_reply(db, instance, parsed, thread)
+            if thread.escalated and not was_escalated:
+                background_tasks.add_task(
+                    dispatch_event, instance.id, THREAD_ESCALATED, {"sender_number": parsed.sender_number}
+                )
         # Fire-and-forget: re-analyzes the thread (extracts business data/FAQs/patterns and,
         # if configured, auto-generates a pending prompt) once enough new messages piled up.
         background_tasks.add_task(maybe_trigger_analysis, instance.id, parsed.sender_number)

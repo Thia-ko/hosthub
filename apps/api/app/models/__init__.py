@@ -10,6 +10,7 @@ from app.models.instance import Instance, InstanceStatus
 from app.models.outbound_webhook_subscription import OutboundWebhookSubscription
 from app.models.prompt_template import PromptTemplate
 from app.models.prompt_version import PromptVersion, PromptVersionSource
+from app.models.satisfaction_response import SatisfactionResponse
 from app.models.theme_setting import ThemeSetting
 from app.models.user import User, UserRole
 from app.models.webhook_event import WebhookEvent
@@ -36,4 +37,5 @@ __all__ = [
     "ConversationAnalysis",
     "ConversationThread",
     "OutboundWebhookSubscription",
+    "SatisfactionResponse",
 ]

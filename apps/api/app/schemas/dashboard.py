@@ -15,6 +15,8 @@ class DashboardSummary(BaseModel):
     prompt_versions_count: int
     ai_assist_usage_today: int
     ai_assist_daily_limit: int
+    csat_average: float | None
+    csat_response_count: int
 
 
 class AdminDashboardOverview(BaseModel):

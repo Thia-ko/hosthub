@@ -20,6 +20,8 @@ class ConversationThread(Base):
     `escalated` distinguishes "auto-paused because the customer/AI flagged it needs a human"
     (app.services.escalation) from "a human chose to pause it themselves" - the UI badges them
     differently. Cleared whenever a human resumes or replies (they've now engaged).
+    `csat_requested_at` marks when app.services.csat last sent the satisfaction question for
+    this thread, so it isn't re-sent on every scheduler tick while awaiting a reply.
     """
 
     __tablename__ = "conversation_threads"
@@ -31,6 +33,7 @@ class ConversationThread(Base):
     last_whatsbotmais_token: Mapped[str | None] = mapped_column(String, nullable=True)
     ai_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     escalated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    csat_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

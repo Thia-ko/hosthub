@@ -46,7 +46,7 @@ export function InstanceDashboard({ instanceId, promptHref }: { instanceId: stri
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-muted-foreground">Mensagens de clientes hoje</CardTitle>
@@ -74,6 +74,23 @@ export function InstanceDashboard({ instanceId, promptHref }: { instanceId: stri
               {summary.ai_assist_usage_today} / {summary.ai_assist_daily_limit} tokens
             </p>
             <Progress value={usagePercent} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Satisfacao dos clientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.csat_response_count > 0 ? (
+              <>
+                <p className="text-2xl font-semibold">{summary.csat_average?.toFixed(1)} / 5</p>
+                <p className="text-xs text-muted-foreground">
+                  {summary.csat_response_count} {summary.csat_response_count === 1 ? "avaliacao" : "avaliacoes"}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem avaliacoes ainda</p>
+            )}
           </CardContent>
         </Card>
       </div>

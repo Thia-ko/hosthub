@@ -5,12 +5,12 @@ from fastapi import FastAPI
 
 from app.api.v1.router import api_router
 from app.api.v1.routers.webhooks import router as public_webhooks_router
-from app.services.scheduler import run_auto_generation_scheduler
+from app.services.scheduler import run_background_scheduler
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler_task = asyncio.create_task(run_auto_generation_scheduler())
+    scheduler_task = asyncio.create_task(run_background_scheduler())
     try:
         yield
     finally:

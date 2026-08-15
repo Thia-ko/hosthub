@@ -98,6 +98,8 @@ export interface DashboardSummary {
   prompt_versions_count: number;
   ai_assist_usage_today: number;
   ai_assist_daily_limit: number;
+  csat_average: number | null;
+  csat_response_count: number;
 }
 
 export interface PromptTemplate {
