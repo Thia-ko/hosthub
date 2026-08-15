@@ -36,6 +36,7 @@ type Section = "admin" | "app";
 
 const NAV: Record<Section, NavItem[]> = {
   admin: [
+    { href: "/admin", label: "Visao geral", icon: LayoutDashboard },
     { href: "/admin/instances", label: "Instancias", icon: Server },
     { href: "/admin/templates", label: "Templates", icon: FileText },
     { href: "/admin/theme", label: "Tema", icon: Palette },

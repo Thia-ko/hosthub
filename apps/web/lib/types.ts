@@ -191,6 +191,17 @@ export interface AnalyticsOverview {
   pending_prompt: boolean;
 }
 
+export interface AdminDashboardOverview {
+  total_instances: number;
+  active_instances: number;
+  paused_instances: number;
+  archived_instances: number;
+  pending_prompts: number;
+  escalated_threads: number;
+  messages_today: number;
+  ai_tokens_used_today: number;
+}
+
 export interface DataReadiness {
   analyzed_conversations: number;
   total_faqs: number;
