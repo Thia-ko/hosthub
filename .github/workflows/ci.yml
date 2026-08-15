@@ -12,6 +12,22 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: hosthub
+          POSTGRES_USER: hosthub
+          POSTGRES_PASSWORD: hosthub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://hosthub:hosthub@localhost:5432/hosthub
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,6 +36,7 @@ jobs:
           cache: "pip"
           cache-dependency-path: apps/api/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
+      - run: alembic upgrade head
       - run: pytest -q
 
   web-tests:
