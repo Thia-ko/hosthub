@@ -1,6 +1,7 @@
 "use client";
 
 import { WebhookInspector } from "@/components/webhook-inspector";
+import { OutboundWebhooksPanel } from "@/components/outbound-webhooks-panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/instance-context";
@@ -47,6 +48,7 @@ export default function WebhookView() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Webhook</h1>
       <WebhookInspector instanceId={detail.id} webhookUrl={webhookUrl} />
+      <OutboundWebhooksPanel instanceId={detail.id} />
     </div>
   );
 }

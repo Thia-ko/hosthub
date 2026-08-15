@@ -11,6 +11,7 @@ from app.models.instance import Instance
 from app.models.prompt_version import PromptVersion, PromptVersionSource
 from app.services.ai_assist_provider import OpenAiCompatibleProvider
 from app.services.ai_settings import get_effective_ai_settings
+from app.services.outbound_webhooks import PROMPT_PENDING, dispatch_event
 from app.utils.json_utils import safe_parse_json_array
 
 logger = logging.getLogger(__name__)
@@ -270,6 +271,9 @@ async def generate_prompt_from_data(db, instance: Instance) -> PromptVersion | N
     logger.info(
         "Saved PENDING prompt v%d for instance %s (%s)",
         version.version_number, instance.id, "incremental" if is_incremental else "full",
+    )
+    await dispatch_event(
+        instance.id, PROMPT_PENDING, {"prompt_version_id": str(version.id), "version_number": version.version_number}
     )
     return version
 

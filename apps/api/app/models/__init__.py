@@ -7,6 +7,7 @@ from app.models.conversation_thread import ConversationThread
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
 from app.models.instance import Instance, InstanceStatus
+from app.models.outbound_webhook_subscription import OutboundWebhookSubscription
 from app.models.prompt_template import PromptTemplate
 from app.models.prompt_version import PromptVersion, PromptVersionSource
 from app.models.theme_setting import ThemeSetting
@@ -34,4 +35,5 @@ __all__ = [
     "AttendantPattern",
     "ConversationAnalysis",
     "ConversationThread",
+    "OutboundWebhookSubscription",
 ]

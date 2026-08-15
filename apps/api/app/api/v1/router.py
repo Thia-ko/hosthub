@@ -9,6 +9,7 @@ from app.api.v1.routers import (
     dashboard,
     health,
     instances,
+    outbound_webhooks,
     prompt_templates,
     prompts,
     theme,
@@ -28,3 +29,4 @@ api_router.include_router(prompt_templates.router)
 api_router.include_router(theme.router)
 api_router.include_router(ai_settings.router)
 api_router.include_router(analytics.router)
+api_router.include_router(outbound_webhooks.router)

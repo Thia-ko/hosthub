@@ -18,6 +18,7 @@ from app.services.ai_assist_provider import get_ai_assist_provider
 from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.conversation_threads import get_or_create_thread
 from app.services.escalation import customer_requests_handoff, split_escalation_tag
+from app.services.outbound_webhooks import MESSAGE_RECEIVED, THREAD_ESCALATED, dispatch_event
 from app.services.prompt_content import get_current_prompt_content
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
@@ -187,7 +188,18 @@ async def receive_webhook(
     await db.commit()
 
     if parsed is not None and thread is not None:
+        background_tasks.add_task(
+            dispatch_event,
+            instance.id,
+            MESSAGE_RECEIVED,
+            {"sender_number": parsed.sender_number, "text": parsed.text, "media_kind": parsed.media_kind},
+        )
+        was_escalated = thread.escalated
         await _maybe_auto_reply(db, instance, parsed, thread)
+        if thread.escalated and not was_escalated:
+            background_tasks.add_task(
+                dispatch_event, instance.id, THREAD_ESCALATED, {"sender_number": parsed.sender_number}
+            )
         # Fire-and-forget: re-analyzes the thread (extracts business data/FAQs/patterns and,
         # if configured, auto-generates a pending prompt) once enough new messages piled up.
         background_tasks.add_task(maybe_trigger_analysis, instance.id, parsed.sender_number)

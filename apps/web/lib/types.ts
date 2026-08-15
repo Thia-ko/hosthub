@@ -20,6 +20,16 @@ export interface InstanceDetail extends Instance {
   last_auto_gen_at: string | null;
 }
 
+export type OutboundWebhookEvent = "message_received" | "thread_escalated" | "prompt_pending";
+
+export interface OutboundWebhookSubscription {
+  id: string;
+  url: string;
+  events: OutboundWebhookEvent[];
+  active: boolean;
+  created_at: string;
+}
+
 export interface InstanceCreateResponse {
   instance: InstanceDetail;
   client_email: string;
