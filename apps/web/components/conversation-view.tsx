@@ -53,7 +53,11 @@ function ConversationListItem({
           {formatDateTime(conversation.last_message_at)}
         </span>
       </div>
-      {conversation.ai_paused ? (
+      {conversation.escalated ? (
+        <Badge variant="destructive" className="w-fit">
+          Aguardando atendimento humano
+        </Badge>
+      ) : conversation.ai_paused ? (
         <Badge variant="secondary" className="w-fit">
           IA pausada
         </Badge>
@@ -107,12 +111,16 @@ function ConversationThread({
   instanceId,
   senderNumber,
   initialAiPaused,
+  initialEscalated,
   onAiPausedChange,
+  onEscalatedChange,
 }: {
   instanceId: string;
   senderNumber: string;
   initialAiPaused: boolean;
+  initialEscalated: boolean;
   onAiPausedChange: (aiPaused: boolean) => void;
+  onEscalatedChange: (escalated: boolean) => void;
 }) {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +128,7 @@ function ConversationThread({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [aiPaused, setAiPaused] = useState(initialAiPaused);
+  const [escalated, setEscalated] = useState(initialEscalated);
   const [togglingPause, setTogglingPause] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
@@ -161,6 +170,10 @@ function ConversationThread({
       const next = !aiPaused;
       setAiPaused(next);
       onAiPausedChange(next);
+      if (!next) {
+        setEscalated(false);
+        onEscalatedChange(false);
+      }
       toast.success(next ? "IA pausada - voce esta no controle desta conversa." : "IA reativada para esta conversa.");
     } catch (err) {
       toast.error(errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE));
@@ -182,7 +195,9 @@ function ConversationThread({
       setMessages((current) => [...(current ?? []), message]);
       setReplyText("");
       setAiPaused(true);
+      setEscalated(false);
       onAiPausedChange(true);
+      onEscalatedChange(false);
     } catch (err) {
       setSendError(errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE));
     } finally {
@@ -193,8 +208,12 @@ function ConversationThread({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <Badge variant={aiPaused ? "secondary" : "outline"}>
-          {aiPaused ? "IA pausada - voce esta respondendo" : "IA respondendo automaticamente"}
+        <Badge variant={escalated ? "destructive" : aiPaused ? "secondary" : "outline"}>
+          {escalated
+            ? "Aguardando atendimento humano"
+            : aiPaused
+              ? "IA pausada - voce esta respondendo"
+              : "IA respondendo automaticamente"}
         </Badge>
         <Button variant="outline" size="sm" onClick={togglePause} disabled={togglingPause}>
           {aiPaused ? "Retomar IA" : "Pausar IA"}
@@ -313,9 +332,15 @@ export function ConversationView({ instanceId }: { instanceId: string }) {
               instanceId={instanceId}
               senderNumber={selected}
               initialAiPaused={conversations.find((c) => c.sender_number === selected)?.ai_paused ?? false}
+              initialEscalated={conversations.find((c) => c.sender_number === selected)?.escalated ?? false}
               onAiPausedChange={(aiPaused) =>
                 setConversations((current) =>
                   (current ?? []).map((c) => (c.sender_number === selected ? { ...c, ai_paused: aiPaused } : c))
+                )
+              }
+              onEscalatedChange={(escalated) =>
+                setConversations((current) =>
+                  (current ?? []).map((c) => (c.sender_number === selected ? { ...c, escalated } : c))
                 )
               }
             />

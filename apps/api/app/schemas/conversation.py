@@ -25,6 +25,7 @@ class ConversationSummary(BaseModel):
     last_message_at: datetime
     message_count: int
     ai_paused: bool
+    escalated: bool
 
 
 class ConversationReplyRequest(BaseModel):

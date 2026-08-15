@@ -15,8 +15,11 @@ class ConversationThread(Base):
     `last_whatsbotmais_token` caches the token WhatsBotMais includes on each inbound webhook -
     outside of that reactive flow (manual reply, future campaigns) there is no other way to
     address a WhatsBotMais conversation, since the provider issues no per-instance credential.
-    `ai_paused` gates the AI auto-reply: set automatically when a human sends a manual reply,
-    toggled explicitly via the pause/resume endpoints.
+    `ai_paused` gates the AI auto-reply: set automatically when a human sends a manual reply or
+    the conversation auto-escalates, toggled explicitly via the pause/resume endpoints.
+    `escalated` distinguishes "auto-paused because the customer/AI flagged it needs a human"
+    (app.services.escalation) from "a human chose to pause it themselves" - the UI badges them
+    differently. Cleared whenever a human resumes or replies (they've now engaged).
     """
 
     __tablename__ = "conversation_threads"
@@ -27,6 +30,7 @@ class ConversationThread(Base):
     sender_number: Mapped[str] = mapped_column(String, nullable=False)
     last_whatsbotmais_token: Mapped[str | None] = mapped_column(String, nullable=True)
     ai_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    escalated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

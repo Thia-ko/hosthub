@@ -36,7 +36,7 @@ async def list_conversations(
     latest = aliased(ConversationMessage, ranked)
 
     result = await db.execute(
-        select(latest, ranked.c.message_count, ConversationThread.ai_paused)
+        select(latest, ranked.c.message_count, ConversationThread.ai_paused, ConversationThread.escalated)
         .outerjoin(
             ConversationThread,
             (ConversationThread.instance_id == instance.id)
@@ -56,8 +56,9 @@ async def list_conversations(
             last_message_at=message.created_at,
             message_count=message_count,
             ai_paused=bool(ai_paused),
+            escalated=bool(escalated),
         )
-        for message, message_count, ai_paused in result.all()
+        for message, message_count, ai_paused, escalated in result.all()
     ]
 
 
@@ -103,6 +104,7 @@ async def reply_to_conversation(
     )
     db.add(message)
     thread.ai_paused = True
+    thread.escalated = False
     await db.commit()
     await db.refresh(message)
     return message
@@ -117,7 +119,7 @@ async def pause_conversation(
     thread = await get_or_create_thread(db, instance.id, sender_number)
     thread.ai_paused = True
     await db.commit()
-    return {"ai_paused": True}
+    return {"ai_paused": True, "escalated": thread.escalated}
 
 
 @router.post("/{sender_number}/resume", response_model=dict)
@@ -128,5 +130,6 @@ async def resume_conversation(
 ) -> dict:
     thread = await get_or_create_thread(db, instance.id, sender_number)
     thread.ai_paused = False
+    thread.escalated = False
     await db.commit()
-    return {"ai_paused": False}
+    return {"ai_paused": False, "escalated": False}

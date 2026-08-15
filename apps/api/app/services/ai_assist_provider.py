@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.services.ai_settings import get_effective_ai_settings
+from app.services.escalation import ESCALATION_TAG
 from app.utils.json_utils import safe_parse_json
 
 SYSTEM_PROMPT = (
@@ -23,6 +24,14 @@ SYSTEM_PROMPT = (
     "necessario.\n"
     "5. Se a instrucao for ambigua, faca a alteracao minima mais razoavel.\n"
     "Nao inclua comentarios, explicacoes ou marcacao de codigo, apenas o prompt final."
+)
+
+ESCALATION_SUFFIX = (
+    "\n\n---\n"
+    "Se voce nao tiver certeza de como responder, ou o assunto for sensivel (reembolso, reclamacao "
+    "grave, algo que foge do que voce sabe responder com as informacoes acima), comece sua resposta "
+    f"com a tag {ESCALATION_TAG} seguida de uma mensagem curta e educada avisando que um atendente "
+    "humano vai continuar o atendimento. So use essa tag quando realmente necessario."
 )
 
 
@@ -98,7 +107,11 @@ class OpenAiCompatibleProvider(AiAssistProvider):
                 {"type": "text", "text": user_message or "Cliente enviou uma imagem sem legenda."},
                 {"type": "image_url", "image_url": {"url": image_url}},
             ]
-        messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": user_content}]
+        messages = [
+            {"role": "system", "content": system_prompt + ESCALATION_SUFFIX},
+            *history,
+            {"role": "user", "content": user_content},
+        ]
         return await self._chat_completion(messages)
 
     async def transcribe(self, audio_url: str) -> str:

@@ -136,6 +136,7 @@ export interface ConversationSummary {
   last_message_at: string;
   message_count: number;
   ai_paused: boolean;
+  escalated: boolean;
 }
 
 export interface ExtractedData {

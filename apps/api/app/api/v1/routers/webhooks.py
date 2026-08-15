@@ -17,6 +17,7 @@ from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 from app.services.ai_assist_provider import get_ai_assist_provider
 from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.conversation_threads import get_or_create_thread
+from app.services.escalation import customer_requests_handoff, split_escalation_tag
 from app.services.prompt_content import get_current_prompt_content
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
@@ -33,6 +34,32 @@ _EXCLUDED_HEADERS = {"cookie", "authorization", "host", "connection", "content-l
 
 _MESSAGE_KIND_BY_MEDIA_KIND = {None: MessageKind.TEXT, "audio": MessageKind.AUDIO, "image": MessageKind.IMAGE}
 
+_HANDOFF_ACK_MESSAGE = "Entendido! Vou te transferir para um atendente humano, que vai continuar por aqui em breve."
+
+
+async def _handoff_to_human(
+    db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
+) -> None:
+    """Sends the canned handoff acknowledgement, records it, and pauses+flags the thread as
+    needing human attention. No AI call involved - safe to run even without a configured
+    provider or remaining daily budget."""
+    await send_reply(instance, parsed.sender_number, _HANDOFF_ACK_MESSAGE, parsed.whatsbotmais_token)
+    db.add(
+        ConversationMessage(
+            instance_id=instance.id,
+            sender_number=parsed.sender_number,
+            direction=MessageDirection.OUTBOUND,
+            kind=MessageKind.TEXT,
+            text=_HANDOFF_ACK_MESSAGE,
+        )
+    )
+    thread.ai_paused = True
+    thread.escalated = True
+    await db.commit()
+    logger.info(
+        "Instance %s: customer requested human handoff for %s, pausing AI", instance.id, parsed.sender_number
+    )
+
 
 async def _maybe_auto_reply(
     db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
@@ -45,6 +72,12 @@ async def _maybe_auto_reply(
         return
 
     try:
+        # Checked before the AI budget/provider gates below: a customer explicitly asking for a
+        # human should hand off even if the AI isn't configured or the daily budget is spent.
+        if parsed.media_kind != "audio" and customer_requests_handoff(parsed.text):
+            await _handoff_to_human(db, instance, parsed, thread)
+            return
+
         used_today = await get_usage_today(db, instance.id)
         if used_today >= get_daily_limit(instance):
             logger.warning("Instance %s hit its daily AI assist budget; skipping auto-reply", instance.id)
@@ -72,9 +105,16 @@ async def _maybe_auto_reply(
             message_text = parsed.text or "(imagem sem legenda)"
             log_prefix = "[atendimento-imagem]"
 
+        # Re-checked here (in addition to the early text/image-caption check above) because an
+        # audio message's handoff request only becomes visible after transcription.
+        if parsed.media_kind == "audio" and customer_requests_handoff(message_text):
+            await _handoff_to_human(db, instance, parsed, thread)
+            return
+
         reply, prompt_tokens, completion_tokens = await provider.reply(
             system_prompt, [], message_text, image_url=image_url
         )
+        reply, escalate = split_escalation_tag(reply)
 
         await send_reply(instance, parsed.sender_number, reply, parsed.whatsbotmais_token)
 
@@ -100,6 +140,10 @@ async def _maybe_auto_reply(
                 status=AiAssistStatus.DISCARDED,
             )
         )
+        if escalate:
+            thread.ai_paused = True
+            thread.escalated = True
+            logger.info("Instance %s: AI escalated conversation with %s", instance.id, parsed.sender_number)
         await db.commit()
     except WhatsAppChannelError:
         logger.exception("Failed to send WhatsApp reply for instance %s", instance.id)
