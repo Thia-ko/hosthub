@@ -108,12 +108,23 @@ async def _handoff_to_human(
     )
 
 
+def _channel_is_ready(instance: Instance, parsed: ParsedInboundMessage) -> bool:
+    """Whether there's a WhatsApp channel to actually send a reply on. WhatsBotMais never sets
+    `whatsapp_instance_name` (no per-instance credential - the reply token rides on every
+    inbound message, see `parsed.whatsbotmais_token`); only Evolution connections use that
+    field. Gating on `whatsapp_instance_name` alone would silently drop every auto-reply for a
+    WhatsBotMais-only instance even with a valid prompt configured."""
+    if instance.status != InstanceStatus.ACTIVE:
+        return False
+    return bool(instance.whatsapp_instance_name or parsed.whatsbotmais_token)
+
+
 async def _maybe_auto_reply(
     db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
 ) -> None:
     """Best-effort: generates and sends a WhatsApp reply for an inbound customer message.
     Never raises - failures are logged so the webhook call always succeeds for the sender."""
-    if not instance.whatsapp_instance_name or instance.status != InstanceStatus.ACTIVE:
+    if not _channel_is_ready(instance, parsed):
         return
     if thread.ai_paused:
         return
