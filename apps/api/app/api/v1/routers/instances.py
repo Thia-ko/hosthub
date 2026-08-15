@@ -45,6 +45,10 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
         ai_assist_daily_token_limit=instance.ai_assist_daily_token_limit,
         webhook_token=instance.webhook_token,
         whatsapp_instance_name=instance.whatsapp_instance_name,
+        auto_generate_prompt=instance.auto_generate_prompt,
+        auto_gen_conversation_threshold=instance.auto_gen_conversation_threshold,
+        auto_gen_interval=instance.auto_gen_interval,
+        last_auto_gen_at=instance.last_auto_gen_at,
     )
 
 
@@ -132,6 +136,12 @@ async def update_instance(
         instance.ai_assist_daily_token_limit = payload.ai_assist_daily_token_limit
     if payload.whatsapp_instance_name is not None:
         instance.whatsapp_instance_name = payload.whatsapp_instance_name or None
+    if payload.auto_generate_prompt is not None:
+        instance.auto_generate_prompt = payload.auto_generate_prompt
+    if payload.auto_gen_conversation_threshold is not None:
+        instance.auto_gen_conversation_threshold = payload.auto_gen_conversation_threshold
+    if payload.auto_gen_interval is not None:
+        instance.auto_gen_interval = payload.auto_gen_interval
     await db.commit()
     await db.refresh(instance)
     return await _detail_out(db, instance)

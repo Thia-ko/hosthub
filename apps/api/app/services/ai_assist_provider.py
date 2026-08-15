@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 
 import httpx
@@ -6,11 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.services.ai_settings import get_effective_ai_settings
+from app.utils.json_utils import safe_parse_json
 
 SYSTEM_PROMPT = (
     "Voce e um editor de prompts de agentes de IA de atendimento. Dado o prompt atual de um agente e uma "
     "instrucao de alteracao, responda APENAS com o texto completo do novo prompt, incorporando a alteracao "
-    "pedida. Nao inclua comentarios, explicacoes ou marcacao de codigo, apenas o prompt final."
+    "pedida.\n"
+    "Regras:\n"
+    "1. Faca APENAS a alteracao pedida - nada mais, nada menos.\n"
+    "2. NUNCA remova informacoes factuais existentes (nome do negocio, produtos, precos, horarios, FAQ, "
+    "politicas) a menos que a instrucao peca explicitamente para remove-las.\n"
+    "3. NUNCA reestruture, reorganize ou reescreva o prompt inteiro, a menos que a instrucao peca "
+    "EXPLICITAMENTE (ex: 'reescreva tudo', 'reestruture o prompt').\n"
+    "4. Preserve exatamente a formatacao, secoes, titulos e ordem do prompt original - altere so o trecho "
+    "necessario.\n"
+    "5. Se a instrucao for ambigua, faca a alteracao minima mais razoavel.\n"
+    "Nao inclua comentarios, explicacoes ou marcacao de codigo, apenas o prompt final."
 )
 
 
@@ -35,6 +47,11 @@ class AiAssistProvider(ABC):
     @abstractmethod
     async def transcribe(self, audio_url: str) -> str:
         """Downloads the audio at `audio_url` and returns its transcribed text."""
+
+    @abstractmethod
+    async def extract_json(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> tuple[dict, int, int]:
+        """Sends a JSON-mode chat completion and returns (parsed_object, prompt_tokens, completion_tokens).
+        Raises ValueError if the response isn't valid/extractable JSON."""
 
 
 class OpenAiCompatibleProvider(AiAssistProvider):
@@ -106,6 +123,37 @@ class OpenAiCompatibleProvider(AiAssistProvider):
         if not isinstance(text, str) or not text.strip():
             raise ValueError("Transcricao de audio veio vazia")
         return text.strip()
+
+    async def extract_json(
+        self, system_prompt: str, user_content: str, temperature: float = 0.2
+    ) -> tuple[dict, int, int]:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        for attempt in range(3):
+            async with httpx.AsyncClient(base_url=self._base_url, timeout=60) as client:
+                response = await client.post(
+                    "/chat/completions",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json={
+                        "model": self._model,
+                        "messages": messages,
+                        "response_format": {"type": "json_object"},
+                        "temperature": temperature,
+                    },
+                )
+            if response.status_code == 429 and attempt < 2:
+                await asyncio.sleep(2**attempt)
+                continue
+            response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"].strip()
+            usage = data.get("usage", {})
+            parsed = safe_parse_json(content)
+            if parsed is None:
+                raise ValueError("Resposta do provedor de IA nao e um JSON valido")
+            return parsed, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
 
 
 async def get_ai_assist_provider(db: AsyncSession = Depends(get_db)) -> AiAssistProvider:

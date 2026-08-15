@@ -1,6 +1,10 @@
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.ai_settings import AiSettings
+from app.models.attendant_pattern import AttendantPattern
+from app.models.conversation_analysis import ConversationAnalysis
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.extracted_data import ExtractedData
+from app.models.faq_item import FaqItem
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_template import PromptTemplate
 from app.models.prompt_version import PromptVersion, PromptVersionSource
@@ -24,4 +28,8 @@ __all__ = [
     "ConversationMessage",
     "MessageDirection",
     "MessageKind",
+    "ExtractedData",
+    "FaqItem",
+    "AttendantPattern",
+    "ConversationAnalysis",
 ]

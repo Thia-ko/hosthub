@@ -14,6 +14,10 @@ export interface InstanceDetail extends Instance {
   ai_assist_daily_token_limit: number | null;
   webhook_token: string;
   whatsapp_instance_name: string | null;
+  auto_generate_prompt: boolean;
+  auto_gen_conversation_threshold: number;
+  auto_gen_interval: "off" | "1d" | "3d" | "1w";
+  last_auto_gen_at: string | null;
 }
 
 export interface InstanceCreateResponse {
@@ -27,7 +31,7 @@ export interface ClientPasswordResetOut {
   generated_password: string;
 }
 
-export type PromptVersionSource = "manual" | "ai_assist" | "template";
+export type PromptVersionSource = "manual" | "ai_assist" | "template" | "auto_generated";
 
 export interface PromptVersionSummary {
   id: string;
@@ -131,4 +135,62 @@ export interface ConversationSummary {
   last_direction: MessageDirection;
   last_message_at: string;
   message_count: number;
+}
+
+export interface ExtractedData {
+  id: string;
+  category: string;
+  key: string;
+  value: string;
+  confidence: number;
+  occurrences: number;
+  source: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  asked_by: string;
+  frequency: number;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendantPattern {
+  id: string;
+  pattern_type: string;
+  description: string;
+  examples: string[];
+  frequency: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalyticsOverview {
+  analyzed_conversations: number;
+  total_faqs: number;
+  total_extracted: number;
+  total_patterns: number;
+  pending_prompt: boolean;
+}
+
+export interface DataReadiness {
+  analyzed_conversations: number;
+  total_faqs: number;
+  total_extracted: number;
+  total_patterns: number;
+  ready: boolean;
+}
+
+export interface GeneratedPrompt {
+  id: string;
+  version_number: number;
+  content: string;
+  change_note: string | null;
+  created_at: string;
 }

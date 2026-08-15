@@ -10,6 +10,7 @@ import { GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE, apiFetch, error
 import { useOwnInstances } from "@/lib/instance-context";
 import type { PromptVersionDetail } from "@/lib/types";
 import { AiAssistPanel } from "./ai-assist-panel";
+import { PendingPromptBanner } from "./pending-prompt-banner";
 import { PromptSandbox } from "@/components/prompt-sandbox";
 import { PENDING_TEMPLATE_KEY } from "@/lib/constants";
 
@@ -116,6 +117,13 @@ export default function PromptEditorView() {
       ) : null}
       {!loading && !loadError ? (
         <>
+          {selectedId ? (
+            <PendingPromptBanner
+              instanceId={selectedId}
+              currentContent={current?.content ?? ""}
+              onResolved={() => loadCurrentVersion(selectedId)}
+            />
+          ) : null}
           <p className="text-sm text-muted-foreground">
             {current ? `Versao atual: ${current.version_number}` : "Nenhuma versao salva ainda."}
           </p>

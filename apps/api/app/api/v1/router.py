@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.routers import (
     ai_assist,
     ai_settings,
+    analytics,
     auth,
     conversations,
     dashboard,
@@ -26,3 +27,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(prompt_templates.router)
 api_router.include_router(theme.router)
 api_router.include_router(ai_settings.router)
+api_router.include_router(analytics.router)

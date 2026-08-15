@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
+  Database,
   FileText,
   History,
   LayoutDashboard,
@@ -44,6 +45,7 @@ const NAV: Record<Section, NavItem[]> = {
     { href: "/app", label: "Dashboard", icon: LayoutDashboard },
     { href: "/app/prompt", label: "Prompt", icon: MessageSquare },
     { href: "/app/prompt/templates", label: "Templates", icon: LayoutTemplate },
+    { href: "/app/prompt/dados-coletados", label: "Dados coletados", icon: Database },
     { href: "/app/prompt/historico", label: "Historico", icon: History },
     { href: "/app/conversations", label: "Conversas", icon: MessagesSquare },
     { href: "/app/webhook", label: "Webhook", icon: Webhook },

@@ -17,6 +17,7 @@ const SOURCE_LABEL: Record<PromptVersionSource, string> = {
   manual: "Manual",
   ai_assist: "Assistente de IA",
   template: "Template",
+  auto_generated: "Geracao automatica",
 };
 
 export default function PromptHistoryView() {

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_instance_by_webhook_token
@@ -14,6 +14,7 @@ from app.models.webhook_event import WebhookEvent
 from app.schemas.instance_prompt import InstancePromptOut
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 from app.services.ai_assist_provider import get_ai_assist_provider
+from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.prompt_content import get_current_prompt_content
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
@@ -107,6 +108,7 @@ async def _maybe_auto_reply(db: AsyncSession, instance: Instance, parsed: Parsed
 @router.post("/{webhook_token}", dependencies=[Depends(rate_limit_webhook_token)])
 async def receive_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     instance: Instance = Depends(get_instance_by_webhook_token),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -136,6 +138,9 @@ async def receive_webhook(
 
     if parsed is not None:
         await _maybe_auto_reply(db, instance, parsed)
+        # Fire-and-forget: re-analyzes the thread (extracts business data/FAQs/patterns and,
+        # if configured, auto-generates a pending prompt) once enough new messages piled up.
+        background_tasks.add_task(maybe_trigger_analysis, instance.id, parsed.sender_number)
 
     return {"received": True}
 
