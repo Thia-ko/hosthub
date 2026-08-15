@@ -7,12 +7,15 @@ The audio/image mediaType values (`_AUDIO_MEDIA_TYPES` / `_IMAGE_MEDIA_TYPES`) a
 If that inference turns out wrong, these tests document exactly what changes.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
 from app.core.config import settings
 from app.services.whatsapp_channel import (
     WhatsAppChannelError,
     parse_inbound_message,
+    send_reply,
     send_text_message,
     send_whatsbotmais_reply,
 )
@@ -317,3 +320,49 @@ async def test_send_text_message_raises_when_only_api_key_missing(monkeypatch):
 
     with pytest.raises(WhatsAppChannelError, match="Evolution API"):
         await send_text_message("minha-instancia", "557991358293", "oi")
+
+
+# --- send_reply: WhatsBotMais token vs. Evolution instance name, whichever the instance has ------
+
+
+async def test_send_reply_prefers_whatsbotmais_token_when_present(monkeypatch):
+    calls = {}
+
+    async def fake_whatsbotmais(token, number, text):
+        calls["whatsbotmais"] = (token, number, text)
+
+    async def fake_evolution(name, number, text):
+        calls["evolution"] = (name, number, text)
+
+    monkeypatch.setattr("app.services.whatsapp_channel.send_whatsbotmais_reply", fake_whatsbotmais)
+    monkeypatch.setattr("app.services.whatsapp_channel.send_text_message", fake_evolution)
+    instance = SimpleNamespace(whatsapp_instance_name="minha-instancia")
+
+    await send_reply(instance, "557991358293", "oi", "tok-abc")
+
+    assert calls == {"whatsbotmais": ("tok-abc", "557991358293", "oi")}
+
+
+async def test_send_reply_falls_back_to_evolution_when_no_token(monkeypatch):
+    calls = {}
+
+    async def fake_whatsbotmais(token, number, text):
+        calls["whatsbotmais"] = (token, number, text)
+
+    async def fake_evolution(name, number, text):
+        calls["evolution"] = (name, number, text)
+
+    monkeypatch.setattr("app.services.whatsapp_channel.send_whatsbotmais_reply", fake_whatsbotmais)
+    monkeypatch.setattr("app.services.whatsapp_channel.send_text_message", fake_evolution)
+    instance = SimpleNamespace(whatsapp_instance_name="minha-instancia")
+
+    await send_reply(instance, "557991358293", "oi", None)
+
+    assert calls == {"evolution": ("minha-instancia", "557991358293", "oi")}
+
+
+async def test_send_reply_raises_when_neither_channel_is_available():
+    instance = SimpleNamespace(whatsapp_instance_name=None)
+
+    with pytest.raises(WhatsAppChannelError, match="Nenhum canal"):
+        await send_reply(instance, "557991358293", "oi", None)

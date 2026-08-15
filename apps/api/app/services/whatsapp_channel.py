@@ -5,6 +5,7 @@ from typing import Literal
 import httpx
 
 from app.core.config import settings
+from app.models.instance import Instance
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,19 @@ async def send_text_message(whatsapp_instance_name: str, number: str, text: str)
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise WhatsAppChannelError(f"Falha ao enviar mensagem via Evolution API: {exc}") from exc
+
+
+async def send_reply(instance: Instance, sender_number: str, text: str, whatsbotmais_token: str | None) -> None:
+    """Single decision point for outbound sends, shared by the reactive auto-reply (webhook)
+    and the manual-reply endpoint: WhatsBotMais issues no per-instance credential, so a token
+    captured from an inbound message is the only way to address that conversation; Evolution
+    sends by the instance's fixed connection name instead."""
+    if whatsbotmais_token:
+        await send_whatsbotmais_reply(whatsbotmais_token, sender_number, text)
+    elif instance.whatsapp_instance_name:
+        await send_text_message(instance.whatsapp_instance_name, sender_number, text)
+    else:
+        raise WhatsAppChannelError("Nenhum canal de WhatsApp configurado para esta instancia.")
 
 
 # mediaType values confirmed from real traffic: plain text messages carry mediaType "conversation".

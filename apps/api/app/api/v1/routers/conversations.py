@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.deps import get_owned_instance
 from app.db.session import get_db
-from app.models.conversation_message import ConversationMessage
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance
-from app.schemas.conversation import ConversationMessageOut, ConversationSummary
+from app.schemas.conversation import ConversationMessageOut, ConversationReplyRequest, ConversationSummary
+from app.services.conversation_threads import get_or_create_thread
+from app.services.whatsapp_channel import WhatsAppChannelError, send_reply
 
 router = APIRouter(prefix="/instances/{instance_id}/conversations", tags=["conversations"])
 
@@ -33,7 +36,12 @@ async def list_conversations(
     latest = aliased(ConversationMessage, ranked)
 
     result = await db.execute(
-        select(latest, ranked.c.message_count)
+        select(latest, ranked.c.message_count, ConversationThread.ai_paused)
+        .outerjoin(
+            ConversationThread,
+            (ConversationThread.instance_id == instance.id)
+            & (ConversationThread.sender_number == ranked.c.sender_number),
+        )
         .where(ranked.c.rn == 1)
         .order_by(ranked.c.created_at.desc())
         .limit(limit)
@@ -47,8 +55,9 @@ async def list_conversations(
             last_direction=message.direction,
             last_message_at=message.created_at,
             message_count=message_count,
+            ai_paused=bool(ai_paused),
         )
-        for message, message_count in result.all()
+        for message, message_count, ai_paused in result.all()
     ]
 
 
@@ -68,3 +77,56 @@ async def get_conversation_thread(
         .offset(offset)
     )
     return list(result.scalars().all())
+
+
+@router.post("/{sender_number}/reply", response_model=ConversationMessageOut)
+async def reply_to_conversation(
+    sender_number: str,
+    payload: ConversationReplyRequest,
+    instance: Instance = Depends(get_owned_instance),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationMessage:
+    """Manual human takeover: sends a message on the instance's WhatsApp channel and pauses
+    the AI auto-reply for this thread, since a human is now handling it directly."""
+    thread = await get_or_create_thread(db, instance.id, sender_number)
+    try:
+        await send_reply(instance, sender_number, payload.text, thread.last_whatsbotmais_token)
+    except WhatsAppChannelError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    message = ConversationMessage(
+        instance_id=instance.id,
+        sender_number=sender_number,
+        direction=MessageDirection.OUTBOUND,
+        kind=MessageKind.TEXT,
+        text=payload.text,
+    )
+    db.add(message)
+    thread.ai_paused = True
+    await db.commit()
+    await db.refresh(message)
+    return message
+
+
+@router.post("/{sender_number}/pause", response_model=dict)
+async def pause_conversation(
+    sender_number: str,
+    instance: Instance = Depends(get_owned_instance),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    thread = await get_or_create_thread(db, instance.id, sender_number)
+    thread.ai_paused = True
+    await db.commit()
+    return {"ai_paused": True}
+
+
+@router.post("/{sender_number}/resume", response_model=dict)
+async def resume_conversation(
+    sender_number: str,
+    instance: Instance = Depends(get_owned_instance),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    thread = await get_or_create_thread(db, instance.id, sender_number)
+    thread.ai_paused = False
+    await db.commit()
+    return {"ai_paused": False}

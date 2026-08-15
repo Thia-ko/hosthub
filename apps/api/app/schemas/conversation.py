@@ -24,3 +24,8 @@ class ConversationSummary(BaseModel):
     last_direction: MessageDirection
     last_message_at: datetime
     message_count: int
+    ai_paused: bool
+
+
+class ConversationReplyRequest(BaseModel):
+    text: str

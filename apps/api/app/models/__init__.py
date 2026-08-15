@@ -3,6 +3,7 @@ from app.models.ai_settings import AiSettings
 from app.models.attendant_pattern import AttendantPattern
 from app.models.conversation_analysis import ConversationAnalysis
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_thread import ConversationThread
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
 from app.models.instance import Instance, InstanceStatus
@@ -32,4 +33,5 @@ __all__ = [
     "FaqItem",
     "AttendantPattern",
     "ConversationAnalysis",
+    "ConversationThread",
 ]

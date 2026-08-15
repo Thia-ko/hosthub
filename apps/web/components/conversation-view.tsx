@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Image as ImageIcon, Mic } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, LoadingState } from "@/components/state";
-import { GENERIC_LOAD_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
+import { Textarea } from "@/components/ui/textarea";
+import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/state";
+import { GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import type { ConversationMessage, ConversationSummary, MessageKind } from "@/lib/types";
 
@@ -50,6 +53,11 @@ function ConversationListItem({
           {formatDateTime(conversation.last_message_at)}
         </span>
       </div>
+      {conversation.ai_paused ? (
+        <Badge variant="secondary" className="w-fit">
+          IA pausada
+        </Badge>
+      ) : null}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {conversation.last_direction === "outbound" ? <span className="shrink-0">Voce:</span> : null}
         <KindIcon kind={conversation.last_message_kind} className="size-3 shrink-0" />
@@ -95,12 +103,27 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
   );
 }
 
-function ConversationThread({ instanceId, senderNumber }: { instanceId: string; senderNumber: string }) {
+function ConversationThread({
+  instanceId,
+  senderNumber,
+  initialAiPaused,
+  onAiPausedChange,
+}: {
+  instanceId: string;
+  senderNumber: string;
+  initialAiPaused: boolean;
+  onAiPausedChange: (aiPaused: boolean) => void;
+}) {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [aiPaused, setAiPaused] = useState(initialAiPaused);
+  const [togglingPause, setTogglingPause] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const loadOlder = useCallback(
     (offset: number) => {
@@ -127,28 +150,91 @@ function ConversationThread({ instanceId, senderNumber }: { instanceId: string; 
     loadOlder(0);
   }, [loadOlder]);
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={() => loadOlder(0)} />;
-  if (!messages || messages.length === 0) {
-    return <EmptyState title="Nenhuma mensagem nesta conversa ainda." />;
+  async function togglePause() {
+    setTogglingPause(true);
+    try {
+      const endpoint = aiPaused ? "resume" : "pause";
+      await apiFetch(
+        `/instances/${instanceId}/conversations/${encodeURIComponent(senderNumber)}/${endpoint}`,
+        { method: "POST" }
+      );
+      const next = !aiPaused;
+      setAiPaused(next);
+      onAiPausedChange(next);
+      toast.success(next ? "IA pausada - voce esta no controle desta conversa." : "IA reativada para esta conversa.");
+    } catch (err) {
+      toast.error(errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE));
+    } finally {
+      setTogglingPause(false);
+    }
+  }
+
+  async function sendReply() {
+    const text = replyText.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const message = await apiFetch<ConversationMessage>(
+        `/instances/${instanceId}/conversations/${encodeURIComponent(senderNumber)}/reply`,
+        { method: "POST", body: JSON.stringify({ text }) }
+      );
+      setMessages((current) => [...(current ?? []), message]);
+      setReplyText("");
+      setAiPaused(true);
+      onAiPausedChange(true);
+    } catch (err) {
+      setSendError(errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {hasMore ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-fit self-center"
-          disabled={loadingMore}
-          onClick={() => loadOlder(messages.length)}
-        >
-          {loadingMore ? "Carregando..." : "Carregar mensagens antigas"}
+      <div className="flex items-center justify-between gap-2">
+        <Badge variant={aiPaused ? "secondary" : "outline"}>
+          {aiPaused ? "IA pausada - voce esta respondendo" : "IA respondendo automaticamente"}
+        </Badge>
+        <Button variant="outline" size="sm" onClick={togglePause} disabled={togglingPause}>
+          {aiPaused ? "Retomar IA" : "Pausar IA"}
         </Button>
+      </div>
+      {loading ? <LoadingState /> : null}
+      {!loading && error ? <ErrorState message={error} onRetry={() => loadOlder(0)} /> : null}
+      {!loading && !error && (!messages || messages.length === 0) ? (
+        <EmptyState title="Nenhuma mensagem nesta conversa ainda." />
       ) : null}
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
+      {!loading && !error && messages && messages.length > 0 ? (
+        <>
+          {hasMore ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-fit self-center"
+              disabled={loadingMore}
+              onClick={() => loadOlder(messages.length)}
+            >
+              {loadingMore ? "Carregando..." : "Carregar mensagens antigas"}
+            </Button>
+          ) : null}
+          {messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+        </>
+      ) : null}
+      <div className="flex flex-col gap-1.5 border-t pt-3">
+        <Textarea
+          placeholder="Responder manualmente..."
+          value={replyText}
+          onChange={(event) => setReplyText(event.target.value)}
+          className="min-h-20"
+        />
+        {sendError ? <FormStatus tone="error">{sendError}</FormStatus> : null}
+        <Button onClick={sendReply} disabled={sending || !replyText.trim()} className="w-fit">
+          {sending ? "Enviando..." : "Enviar"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -222,7 +308,17 @@ export function ConversationView({ instanceId }: { instanceId: string }) {
               <ArrowLeft className="size-4" />
               Conversas
             </Button>
-            <ConversationThread instanceId={instanceId} senderNumber={selected} />
+            <ConversationThread
+              key={selected}
+              instanceId={instanceId}
+              senderNumber={selected}
+              initialAiPaused={conversations.find((c) => c.sender_number === selected)?.ai_paused ?? false}
+              onAiPausedChange={(aiPaused) =>
+                setConversations((current) =>
+                  (current ?? []).map((c) => (c.sender_number === selected ? { ...c, ai_paused: aiPaused } : c))
+                )
+              }
+            />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Selecione uma conversa para ver o historico.</p>

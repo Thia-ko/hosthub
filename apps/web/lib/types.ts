@@ -135,6 +135,7 @@ export interface ConversationSummary {
   last_direction: MessageDirection;
   last_message_at: string;
   message_count: number;
+  ai_paused: boolean;
 }
 
 export interface ExtractedData {

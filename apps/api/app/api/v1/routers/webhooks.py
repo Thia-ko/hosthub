@@ -8,6 +8,7 @@ from app.core.rate_limit import rate_limit_webhook_token
 from app.db.session import get_db
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_version import PromptVersion
 from app.models.webhook_event import WebhookEvent
@@ -15,13 +16,13 @@ from app.schemas.instance_prompt import InstancePromptOut
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 from app.services.ai_assist_provider import get_ai_assist_provider
 from app.services.conversation_analyzer import maybe_trigger_analysis
+from app.services.conversation_threads import get_or_create_thread
 from app.services.prompt_content import get_current_prompt_content
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
     WhatsAppChannelError,
     parse_inbound_message,
-    send_text_message,
-    send_whatsbotmais_reply,
+    send_reply,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,10 +34,14 @@ _EXCLUDED_HEADERS = {"cookie", "authorization", "host", "connection", "content-l
 _MESSAGE_KIND_BY_MEDIA_KIND = {None: MessageKind.TEXT, "audio": MessageKind.AUDIO, "image": MessageKind.IMAGE}
 
 
-async def _maybe_auto_reply(db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage) -> None:
+async def _maybe_auto_reply(
+    db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
+) -> None:
     """Best-effort: generates and sends a WhatsApp reply for an inbound customer message.
     Never raises - failures are logged so the webhook call always succeeds for the sender."""
     if not instance.whatsapp_instance_name or instance.status != InstanceStatus.ACTIVE:
+        return
+    if thread.ai_paused:
         return
 
     try:
@@ -71,10 +76,7 @@ async def _maybe_auto_reply(db: AsyncSession, instance: Instance, parsed: Parsed
             system_prompt, [], message_text, image_url=image_url
         )
 
-        if parsed.whatsbotmais_token:
-            await send_whatsbotmais_reply(parsed.whatsbotmais_token, parsed.sender_number, reply)
-        else:
-            await send_text_message(instance.whatsapp_instance_name, parsed.sender_number, reply)
+        await send_reply(instance, parsed.sender_number, reply, parsed.whatsbotmais_token)
 
         db.add(
             ConversationMessage(
@@ -123,6 +125,7 @@ async def receive_webhook(
     db.add(WebhookEvent(instance_id=instance.id, headers_json=headers, payload_json=payload))
 
     parsed = parse_inbound_message(payload) if isinstance(payload, dict) else None
+    thread: ConversationThread | None = None
     if parsed is not None:
         db.add(
             ConversationMessage(
@@ -134,10 +137,13 @@ async def receive_webhook(
                 media_url=parsed.media_url,
             )
         )
+        thread = await get_or_create_thread(db, instance.id, parsed.sender_number)
+        if parsed.whatsbotmais_token:
+            thread.last_whatsbotmais_token = parsed.whatsbotmais_token
     await db.commit()
 
-    if parsed is not None:
-        await _maybe_auto_reply(db, instance, parsed)
+    if parsed is not None and thread is not None:
+        await _maybe_auto_reply(db, instance, parsed, thread)
         # Fire-and-forget: re-analyzes the thread (extracts business data/FAQs/patterns and,
         # if configured, auto-generates a pending prompt) once enough new messages piled up.
         background_tasks.add_task(maybe_trigger_analysis, instance.id, parsed.sender_number)
