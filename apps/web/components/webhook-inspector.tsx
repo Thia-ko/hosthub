@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { MobileCard, MobileCardList } from "@/components/mobile-card";
 import { GENERIC_LOAD_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
+import { copyToClipboard } from "@/lib/utils";
 import type { WebhookEvent } from "@/lib/types";
 
 const PAGE_SIZE = 50;
@@ -72,8 +73,8 @@ export function WebhookInspector({
     loadPage(0);
   }, [loadPage]);
 
-  function copyUrl() {
-    navigator.clipboard.writeText(webhookUrl);
+  async function copyUrl() {
+    if (!(await copyToClipboard(webhookUrl))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

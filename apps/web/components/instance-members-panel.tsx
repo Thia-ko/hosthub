@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { copyToClipboard } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,11 +94,7 @@ function InviteMemberForm({
           <strong>Senha:</strong> {created.password}
         </span>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigator.clipboard.writeText(created.password)}
-          >
+          <Button size="sm" variant="outline" onClick={() => copyToClipboard(created.password)}>
             Copiar senha
           </Button>
           <Button

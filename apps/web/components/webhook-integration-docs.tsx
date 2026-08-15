@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -12,8 +13,8 @@ export function WebhookIntegrationDocs({ webhookUrl }: { webhookUrl: string }) {
   const [copied, setCopied] = useState(false);
   const promptUrl = `${webhookUrl}/prompt`;
 
-  function copyPromptUrl() {
-    navigator.clipboard.writeText(promptUrl);
+  async function copyPromptUrl() {
+    if (!(await copyToClipboard(promptUrl))) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

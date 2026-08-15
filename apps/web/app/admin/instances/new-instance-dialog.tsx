@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -85,10 +86,7 @@ export function NewInstanceDialog({ onCreated }: { onCreated: () => void }) {
             </span>
           </div>
           <DialogFooter>
-            <Button
-              onClick={() => navigator.clipboard.writeText(createdPassword.password)}
-              variant="outline"
-            >
+            <Button onClick={() => copyToClipboard(createdPassword.password)} variant="outline">
               Copiar senha
             </Button>
             <Button onClick={() => handleOpenChange(false)}>Fechar</Button>

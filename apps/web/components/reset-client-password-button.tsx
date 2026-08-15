@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { FormStatus } from "@/components/state";
@@ -61,7 +62,7 @@ export function ResetClientPasswordButton({ instanceId, clientEmail }: { instanc
               </span>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => navigator.clipboard.writeText(result.generated_password)}>
+              <Button variant="outline" onClick={() => copyToClipboard(result.generated_password)}>
                 Copiar senha
               </Button>
               <Button onClick={() => handleOpenChange(false)}>Fechar</Button>
