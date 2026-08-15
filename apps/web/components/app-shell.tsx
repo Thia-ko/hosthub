@@ -16,6 +16,7 @@ import {
   MessagesSquare,
   Palette,
   Server,
+  Users,
   Webhook,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const NAV: Record<Section, NavItem[]> = {
     { href: "/app/prompt/historico", label: "Historico", icon: History },
     { href: "/app/conversations", label: "Conversas", icon: MessagesSquare },
     { href: "/app/webhook", label: "Webhook", icon: Webhook },
+    { href: "/app/equipe", label: "Equipe", icon: Users },
   ],
 };
 

@@ -20,6 +20,22 @@ export interface InstanceDetail extends Instance {
   last_auto_gen_at: string | null;
 }
 
+export type InstanceMemberRole = "owner" | "member";
+
+export interface InstanceMember {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: InstanceMemberRole;
+  created_at: string;
+}
+
+export interface InstanceMembersResponse {
+  members: InstanceMember[];
+  can_manage: boolean;
+}
+
 export type OutboundWebhookEvent = "message_received" | "thread_escalated" | "prompt_pending";
 
 export interface OutboundWebhookSubscription {

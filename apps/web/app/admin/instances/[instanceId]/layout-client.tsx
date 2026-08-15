@@ -19,6 +19,7 @@ const TABS = [
   { href: "/prompt/historico", label: "Historico" },
   { href: "/conversations", label: "Conversas" },
   { href: "/webhook", label: "Webhook" },
+  { href: "/equipe", label: "Equipe" },
 ];
 
 export function InstanceDetailLayoutClient({ instanceId, children }: { instanceId: string; children: ReactNode }) {

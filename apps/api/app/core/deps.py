@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.security import ACCESS_COOKIE_NAME, decode_token
 from app.db.session import get_db
 from app.models.instance import Instance
+from app.models.instance_member import InstanceMember
 from app.models.user import User, UserRole
 
 
@@ -48,8 +49,14 @@ async def get_owned_instance(
     instance = result.scalar_one_or_none()
     if instance is None:
         raise not_found
-    if user.role != UserRole.ADMIN and instance.owner_user_id != user.id:
-        raise not_found
+    if user.role != UserRole.ADMIN:
+        member = await db.execute(
+            select(InstanceMember).where(
+                InstanceMember.instance_id == instance_id, InstanceMember.user_id == user.id
+            )
+        )
+        if member.scalar_one_or_none() is None:
+            raise not_found
     return instance
 
 

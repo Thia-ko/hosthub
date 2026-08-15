@@ -9,6 +9,7 @@ from app.core.security import hash_password
 from app.core.slug import slugify
 from app.db.session import get_db
 from app.models.instance import Instance, InstanceStatus
+from app.models.instance_member import InstanceMember, InstanceMemberRole
 from app.models.user import User, UserRole
 from app.schemas.instance import (
     ClientPasswordResetOut,
@@ -58,7 +59,9 @@ async def list_instances(
 ) -> list[InstanceOut]:
     query = select(Instance, User.email).join(User, User.id == Instance.owner_user_id)
     if user.role != UserRole.ADMIN:
-        query = query.where(Instance.owner_user_id == user.id)
+        query = query.join(InstanceMember, InstanceMember.instance_id == Instance.id).where(
+            InstanceMember.user_id == user.id
+        )
     result = await db.execute(query.order_by(Instance.created_at.desc()))
     return [
         InstanceOut(
@@ -104,6 +107,8 @@ async def create_instance(
         created_by_admin_id=admin.id,
     )
     db.add(instance)
+    await db.flush()
+    db.add(InstanceMember(instance_id=instance.id, user_id=client.id, role=InstanceMemberRole.OWNER))
     await db.commit()
     await db.refresh(instance)
 
