@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
 import { ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
 import { useAsyncData } from "@/lib/use-async-data";
-import type { DashboardSummary } from "@/lib/types";
+import type { AnalyticsOverview, DashboardSummary } from "@/lib/types";
 
 const chartConfig = {
   count: {
@@ -16,13 +18,17 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function InstanceDashboard({ instanceId }: { instanceId: string }) {
+export function InstanceDashboard({ instanceId, promptHref }: { instanceId: string; promptHref?: string }) {
   const {
     data: summary,
     error,
     loading,
     reload,
   } = useAsyncData(() => apiFetch<DashboardSummary>(`/instances/${instanceId}/dashboard/summary`), [instanceId]);
+  const { data: analytics } = useAsyncData(
+    () => apiFetch<AnalyticsOverview>(`/instances/${instanceId}/analytics/overview`),
+    [instanceId]
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={reload} />;
@@ -91,6 +97,45 @@ export function InstanceDashboard({ instanceId }: { instanceId: string }) {
           </p>
         </CardContent>
       </Card>
+
+      {analytics ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Base de conhecimento</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Conversas analisadas</p>
+                <p className="text-xl font-semibold">{analytics.analyzed_conversations}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">FAQs</p>
+                <p className="text-xl font-semibold">{analytics.total_faqs}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Dados extraidos</p>
+                <p className="text-xl font-semibold">{analytics.total_extracted}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Padroes de atendimento</p>
+                <p className="text-xl font-semibold">{analytics.total_patterns}</p>
+              </div>
+            </div>
+            {analytics.pending_prompt ? (
+              promptHref ? (
+                <Link href={promptHref}>
+                  <Badge variant="secondary" className="cursor-pointer">
+                    Prompt gerado automaticamente aguardando aprovacao
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge variant="secondary">Prompt gerado automaticamente aguardando aprovacao</Badge>
+              )
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
