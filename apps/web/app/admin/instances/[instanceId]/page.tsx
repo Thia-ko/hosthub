@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,12 +14,22 @@ import { GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-cl
 import { useInstanceDetail } from "@/lib/instance-detail-context";
 import type { InstanceDetail, InstanceStatus } from "@/lib/types";
 
+const AUTO_GEN_INTERVAL_LABEL: Record<InstanceDetail["auto_gen_interval"], string> = {
+  off: "Por quantidade de conversas analisadas",
+  "1d": "Diariamente",
+  "3d": "A cada 3 dias",
+  "1w": "Semanalmente",
+};
+
 export default function AdminInstanceGeneralPage() {
   const { instance, reload } = useInstanceDetail();
   const [name, setName] = useState(instance.name);
   const [status, setStatus] = useState<InstanceStatus>(instance.status);
   const [tokenLimit, setTokenLimit] = useState(instance.ai_assist_daily_token_limit?.toString() ?? "");
   const [whatsappInstanceName, setWhatsappInstanceName] = useState(instance.whatsapp_instance_name ?? "");
+  const [autoGeneratePrompt, setAutoGeneratePrompt] = useState(instance.auto_generate_prompt);
+  const [autoGenThreshold, setAutoGenThreshold] = useState(instance.auto_gen_conversation_threshold.toString());
+  const [autoGenInterval, setAutoGenInterval] = useState(instance.auto_gen_interval);
   const [syncedInstance, setSyncedInstance] = useState<InstanceDetail>(instance);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -30,6 +41,9 @@ export default function AdminInstanceGeneralPage() {
     setStatus(instance.status);
     setTokenLimit(instance.ai_assist_daily_token_limit?.toString() ?? "");
     setWhatsappInstanceName(instance.whatsapp_instance_name ?? "");
+    setAutoGeneratePrompt(instance.auto_generate_prompt);
+    setAutoGenThreshold(instance.auto_gen_conversation_threshold.toString());
+    setAutoGenInterval(instance.auto_gen_interval);
   }
 
   async function handleSave() {
@@ -43,6 +57,9 @@ export default function AdminInstanceGeneralPage() {
           status,
           ai_assist_daily_token_limit: tokenLimit ? Number(tokenLimit) : null,
           whatsapp_instance_name: whatsappInstanceName,
+          auto_generate_prompt: autoGeneratePrompt,
+          auto_gen_conversation_threshold: Number(autoGenThreshold) || 5,
+          auto_gen_interval: autoGenInterval,
         }),
       });
       reload();
@@ -105,6 +122,59 @@ export default function AdminInstanceGeneralPage() {
           &quot;ativo&quot;) so para ligar a resposta automatica. Evolution API: preencha com o nome exato da
           instancia configurada la. Deixe em branco para so registrar os eventos sem responder.
         </p>
+      </div>
+      <div className="flex flex-col gap-2 rounded-md border p-3">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="autoGeneratePrompt"
+            checked={autoGeneratePrompt}
+            onCheckedChange={(checked) => setAutoGeneratePrompt(checked === true)}
+          />
+          <Label htmlFor="autoGeneratePrompt">Gerar prompts automaticamente a partir das conversas</Label>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Cria uma versao de prompt pendente com base nos dados extraidos das conversas. Ela nunca entra em
+          uso sozinha - alguem precisa aprova-la em Prompt &gt; editor.
+        </p>
+        {autoGeneratePrompt ? (
+          <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-end">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label>Gatilho</Label>
+              <Select
+                value={autoGenInterval}
+                onValueChange={(value) => setAutoGenInterval(value as InstanceDetail["auto_gen_interval"])}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(AUTO_GEN_INTERVAL_LABEL).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {autoGenInterval === "off" ? (
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Label htmlFor="autoGenThreshold">Conversas analisadas por geracao</Label>
+                <Input
+                  id="autoGenThreshold"
+                  type="number"
+                  min={1}
+                  value={autoGenThreshold}
+                  onChange={(event) => setAutoGenThreshold(event.target.value)}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {instance.last_auto_gen_at ? (
+          <p className="text-xs text-muted-foreground">
+            Ultima geracao automatica: {new Date(instance.last_auto_gen_at).toLocaleString("pt-BR")}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>Cliente responsavel</Label>
