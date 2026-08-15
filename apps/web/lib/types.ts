@@ -36,6 +36,20 @@ export interface InstanceMembersResponse {
   can_manage: boolean;
 }
 
+export type CampaignStatus = "sending" | "completed" | "failed";
+
+export interface Campaign {
+  id: string;
+  name: string;
+  message: string;
+  status: CampaignStatus;
+  total_recipients: number;
+  sent_count: number;
+  skipped_count: number;
+  failed_count: number;
+  created_at: string;
+}
+
 export type OutboundWebhookEvent = "message_received" | "thread_escalated" | "prompt_pending";
 
 export interface OutboundWebhookSubscription {

@@ -18,6 +18,7 @@ const TABS = [
   { href: "/prompt/dados-coletados", label: "Dados coletados" },
   { href: "/prompt/historico", label: "Historico" },
   { href: "/conversations", label: "Conversas" },
+  { href: "/campaigns", label: "Campanhas" },
   { href: "/webhook", label: "Webhook" },
   { href: "/equipe", label: "Equipe" },
 ];

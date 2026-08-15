@@ -1,6 +1,8 @@
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.ai_settings import AiSettings
 from app.models.attendant_pattern import AttendantPattern
+from app.models.campaign import Campaign, CampaignStatus
+from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientStatus
 from app.models.conversation_analysis import ConversationAnalysis
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
 from app.models.conversation_thread import ConversationThread
@@ -41,4 +43,8 @@ __all__ = [
     "SatisfactionResponse",
     "InstanceMember",
     "InstanceMemberRole",
+    "Campaign",
+    "CampaignStatus",
+    "CampaignRecipient",
+    "CampaignRecipientStatus",
 ]

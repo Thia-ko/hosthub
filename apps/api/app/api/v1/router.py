@@ -5,6 +5,7 @@ from app.api.v1.routers import (
     ai_settings,
     analytics,
     auth,
+    campaigns,
     conversations,
     dashboard,
     health,
@@ -33,3 +34,4 @@ api_router.include_router(theme.router)
 api_router.include_router(ai_settings.router)
 api_router.include_router(analytics.router)
 api_router.include_router(outbound_webhooks.router)
+api_router.include_router(campaigns.router)
