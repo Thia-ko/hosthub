@@ -4,7 +4,7 @@ const INTERNAL_API_URL = process.env.INTERNAL_API_URL ?? "http://api:8000";
 
 /** Fallback brand color used when the API is unreachable (e.g. icon route rendered before the
  * backend is up) — matches ThemeSetting's own DB default so it never looks out of place. */
-export const FALLBACK_PRIMARY_COLOR = "#4F46E5";
+export const FALLBACK_PRIMARY_COLOR = "#16A34A";
 
 export async function getThemeSettings(): Promise<ThemeSettings | null> {
   try {
