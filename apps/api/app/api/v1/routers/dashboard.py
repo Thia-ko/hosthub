@@ -13,8 +13,9 @@ from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus
 from app.models.prompt_version import PromptVersion
 from app.models.satisfaction_response import SatisfactionResponse
-from app.schemas.dashboard import AdminDashboardOverview, DashboardSummary, HourlyCount
+from app.schemas.dashboard import AdminDashboardOverview, DailyCount, DashboardSummary, HourlyCount
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
+from app.services.dashboard_stats import get_daily_message_counts, get_daily_token_usage
 
 router = APIRouter(prefix="/instances/{instance_id}/dashboard", tags=["dashboard"])
 admin_router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -61,6 +62,9 @@ async def get_admin_overview(db: AsyncSession = Depends(get_db)) -> AdminDashboa
         )
     ).scalar_one()
 
+    daily_messages = await get_daily_message_counts(db)
+    daily_tokens = await get_daily_token_usage(db)
+
     return AdminDashboardOverview(
         total_instances=sum(counts_by_status.values()),
         active_instances=counts_by_status.get(InstanceStatus.ACTIVE, 0),
@@ -70,6 +74,8 @@ async def get_admin_overview(db: AsyncSession = Depends(get_db)) -> AdminDashboa
         escalated_threads=escalated_threads,
         messages_today=messages_today,
         ai_tokens_used_today=ai_tokens_used_today,
+        messages_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_messages],
+        ai_tokens_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_tokens],
     )
 
 
@@ -107,6 +113,8 @@ async def get_summary(
     ).scalar_one()
 
     ai_assist_usage_today = await get_usage_today(db, instance.id)
+    daily_messages = await get_daily_message_counts(db, instance_id=instance.id)
+    daily_tokens = await get_daily_token_usage(db, instance_id=instance.id)
 
     csat_average, csat_response_count = (
         await db.execute(
@@ -120,6 +128,8 @@ async def get_summary(
         date=target_date,
         total_messages=total_messages,
         messages_by_hour=messages_by_hour,
+        messages_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_messages],
+        ai_tokens_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_tokens],
         prompt_versions_count=prompt_versions_count,
         ai_assist_usage_today=ai_assist_usage_today,
         ai_assist_daily_limit=get_daily_limit(instance),
