@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Inbox, Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GENERIC_LOAD_ERROR_MESSAGE } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -46,25 +46,32 @@ export function EmptyState({
   title,
   description,
   action,
+  icon: Icon = Inbox,
   bordered = true,
   className,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: LucideIcon;
   bordered?: boolean;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-1.5 py-10 text-center",
+        "flex flex-col items-center gap-3 py-10 text-center",
         bordered && "rounded-lg border border-dashed",
         className
       )}
     >
-      <p className="text-sm font-medium">{title}</p>
-      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-5" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <p className="text-sm font-medium">{title}</p>
+        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      </div>
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
   );

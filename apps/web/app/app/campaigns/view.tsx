@@ -1,5 +1,6 @@
 "use client";
 
+import { Server } from "lucide-react";
 import { CampaignsPanel } from "@/components/campaigns-panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
@@ -26,7 +27,7 @@ export default function CampaignsPage() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Campanhas</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

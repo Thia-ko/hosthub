@@ -1,5 +1,6 @@
 "use client";
 
+import { LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
@@ -55,7 +56,7 @@ export default function AdminTemplatesView() {
       {loading ? <LoadingState /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={reload} /> : null}
       {!loading && !error && templates && templates.length === 0 ? (
-        <EmptyState title="Nenhum template cadastrado ainda." />
+        <EmptyState title="Nenhum template cadastrado ainda." icon={LayoutTemplate} />
       ) : null}
       {!loading && !error && templates && templates.length > 0 ? (
         <>

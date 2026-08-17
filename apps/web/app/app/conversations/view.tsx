@@ -1,6 +1,7 @@
 "use client";
 
 import { ConversationView } from "@/components/conversation-view";
+import { Server } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
 
@@ -14,7 +15,7 @@ export default function ConversationsView() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Conversas</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

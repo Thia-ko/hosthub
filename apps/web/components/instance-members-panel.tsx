@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { copyToClipboard } from "@/lib/utils";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,7 +175,7 @@ export function InstanceMembersPanel({ instanceId }: { instanceId: string }) {
       </div>
       {loading && !data ? <LoadingState /> : null}
       {!data && error ? <ErrorState message={error} onRetry={reload} /> : null}
-      {data && data.members.length === 0 ? <EmptyState title="Nenhum membro ainda." /> : null}
+      {data && data.members.length === 0 ? <EmptyState title="Nenhum membro ainda." icon={Users} /> : null}
       {data && data.members.length > 0 ? (
         <div className="flex flex-col gap-2">
           {data.members.map((member) => (

@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   ScrollText,
+  Server,
   ShoppingBag,
   Sparkles,
   Trash2,
@@ -503,7 +504,7 @@ export default function DadosColetadosPage() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Dados coletados</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

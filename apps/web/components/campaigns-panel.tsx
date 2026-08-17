@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Megaphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,7 +113,7 @@ export function CampaignsPanel({ instanceId }: { instanceId: string }) {
       </div>
       {loading && !campaigns ? <LoadingState /> : null}
       {!campaigns && error ? <ErrorState message={error} onRetry={reload} /> : null}
-      {campaigns && campaigns.length === 0 ? <EmptyState title="Nenhuma campanha enviada ainda." /> : null}
+      {campaigns && campaigns.length === 0 ? <EmptyState title="Nenhuma campanha enviada ainda." icon={Megaphone} /> : null}
       {campaigns && campaigns.length > 0 ? (
         <div className="flex flex-col gap-3">
           {campaigns.map((campaign) => (

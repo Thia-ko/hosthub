@@ -121,10 +121,17 @@ export interface WebhookEvent {
   received_at: string;
 }
 
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
 export interface DashboardSummary {
   date: string;
   total_messages: number;
   messages_by_hour: { hour: number; count: number }[];
+  messages_last_7_days: DailyCount[];
+  ai_tokens_last_7_days: DailyCount[];
   prompt_versions_count: number;
   ai_assist_usage_today: number;
   ai_assist_daily_limit: number;
@@ -232,6 +239,8 @@ export interface AdminDashboardOverview {
   escalated_threads: number;
   messages_today: number;
   ai_tokens_used_today: number;
+  messages_last_7_days: DailyCount[];
+  ai_tokens_last_7_days: DailyCount[];
 }
 
 export interface DataReadiness {

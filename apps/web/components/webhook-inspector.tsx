@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Webhook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -104,7 +105,7 @@ export function WebhookInspector({
       {loading ? <LoadingState /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => loadPage(0)} /> : null}
       {!loading && !error && events && events.length === 0 ? (
-        <EmptyState title="Nenhum evento recebido ainda." />
+        <EmptyState title="Nenhum evento recebido ainda." icon={Webhook} />
       ) : null}
       {!loading && !error && events && events.length > 0 ? (
         <>

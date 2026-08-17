@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Webhook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -190,7 +190,7 @@ export function OutboundWebhooksPanel({ instanceId }: { instanceId: string }) {
       {loading ? <LoadingState /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={reload} /> : null}
       {!loading && !error && subscriptions && subscriptions.length === 0 ? (
-        <EmptyState title="Nenhuma integracao configurada ainda." />
+        <EmptyState title="Nenhuma integracao configurada ainda." icon={Webhook} />
       ) : null}
       {!loading && !error && subscriptions && subscriptions.length > 0 ? (
         <div className="flex flex-col gap-2">

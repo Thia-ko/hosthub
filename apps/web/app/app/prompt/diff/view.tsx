@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { History } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 import { DiffView } from "@/components/diff-view";
@@ -23,7 +24,7 @@ function PromptDiffContent() {
   );
 
   if (!instanceId || !from || !to) {
-    return <EmptyState title="Selecione duas versoes no historico para comparar." />;
+    return <EmptyState title="Selecione duas versoes no historico para comparar." icon={History} />;
   }
 
   if (loading) return <LoadingState />;

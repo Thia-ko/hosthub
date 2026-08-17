@@ -1,6 +1,7 @@
 "use client";
 
 import { InstanceMembersPanel } from "@/components/instance-members-panel";
+import { Server } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
 
@@ -26,7 +27,7 @@ export default function EquipePage() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Equipe</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

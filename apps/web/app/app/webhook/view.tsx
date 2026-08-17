@@ -1,6 +1,7 @@
 "use client";
 
 import { WebhookInspector } from "@/components/webhook-inspector";
+import { Server } from "lucide-react";
 import { OutboundWebhooksPanel } from "@/components/outbound-webhooks-panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
@@ -32,7 +33,7 @@ export default function WebhookView() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Webhook</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

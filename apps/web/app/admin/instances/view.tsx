@@ -1,5 +1,6 @@
 "use client";
 
+import { Server } from "lucide-react";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
@@ -22,7 +23,7 @@ export default function AdminInstancesView() {
       {loading ? <LoadingState /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={reload} /> : null}
       {!loading && !error && instances && instances.length === 0 ? (
-        <EmptyState title="Nenhuma instancia criada ainda." />
+        <EmptyState title="Nenhuma instancia criada ainda." icon={Server} />
       ) : null}
       {!loading && !error && instances && instances.length > 0 ? (
         <>

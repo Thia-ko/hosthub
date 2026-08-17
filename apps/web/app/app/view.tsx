@@ -1,5 +1,6 @@
 "use client";
 
+import { Server } from "lucide-react";
 import { InstanceDashboard } from "@/components/instance-dashboard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
@@ -22,6 +23,7 @@ export default function ClientHomeView() {
         <EmptyState
           title="Nenhuma instancia associada a sua conta ainda."
           description="Fale com o administrador para vincular sua conta a uma instancia."
+          icon={Server}
         />
       </div>
     );

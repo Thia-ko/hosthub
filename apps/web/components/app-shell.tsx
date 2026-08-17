@@ -142,7 +142,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-muted/20 lg:flex">
-      <aside className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+      <aside className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[1px_0_4px_rgba(0,0,0,0.04)] lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col dark:shadow-none">
         {sidebarBody}
       </aside>
 

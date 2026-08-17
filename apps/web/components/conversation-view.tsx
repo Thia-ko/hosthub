@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, Mic } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, MessageSquare, MessagesSquare, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,19 @@ import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/s
 import { GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import type { ConversationMessage, ConversationSummary, MessageKind } from "@/lib/types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const PAGE_SIZE = 50;
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+/** No display name is stored for a WhatsApp contact, only the phone number - the last 4 digits
+ * double as a compact avatar label, same convention WhatsApp itself uses for unsaved contacts. */
+function avatarLabel(number: string): string {
+  const digits = number.replace(/\D/g, "");
+  return digits.slice(-4) || "?";
 }
 
 function KindIcon({ kind, className }: { kind: MessageKind; className?: string }) {
@@ -43,29 +51,36 @@ function ConversationListItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors",
+        "flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-colors",
         active ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted/50"
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-sm font-medium">{conversation.sender_number}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {formatDateTime(conversation.last_message_at)}
-        </span>
-      </div>
-      {conversation.escalated ? (
-        <Badge variant="destructive" className="w-fit">
-          Aguardando atendimento humano
-        </Badge>
-      ) : conversation.ai_paused ? (
-        <Badge variant="secondary" className="w-fit">
-          IA pausada
-        </Badge>
-      ) : null}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {conversation.last_direction === "outbound" ? <span className="shrink-0">Voce:</span> : null}
-        <KindIcon kind={conversation.last_message_kind} className="size-3 shrink-0" />
-        <span className="truncate">{conversation.last_message_text || "(sem texto)"}</span>
+      <Avatar className="mt-0.5 shrink-0">
+        <AvatarFallback className="bg-primary/10 text-[11px] font-medium text-primary">
+          {avatarLabel(conversation.sender_number)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium">{conversation.sender_number}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {formatDateTime(conversation.last_message_at)}
+          </span>
+        </div>
+        {conversation.escalated ? (
+          <Badge variant="destructive" className="w-fit">
+            Aguardando atendimento humano
+          </Badge>
+        ) : conversation.ai_paused ? (
+          <Badge variant="secondary" className="w-fit">
+            IA pausada
+          </Badge>
+        ) : null}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {conversation.last_direction === "outbound" ? <span className="shrink-0">Voce:</span> : null}
+          <KindIcon kind={conversation.last_message_kind} className="size-3 shrink-0" />
+          <span className="truncate">{conversation.last_message_text || "(sem texto)"}</span>
+        </div>
       </div>
     </button>
   );
@@ -222,7 +237,7 @@ function ConversationThread({
       {loading ? <LoadingState /> : null}
       {!loading && error ? <ErrorState message={error} onRetry={() => loadOlder(0)} /> : null}
       {!loading && !error && (!messages || messages.length === 0) ? (
-        <EmptyState title="Nenhuma mensagem nesta conversa ainda." />
+        <EmptyState title="Nenhuma mensagem nesta conversa ainda." icon={MessageSquare} />
       ) : null}
       {!loading && !error && messages && messages.length > 0 ? (
         <>
@@ -293,6 +308,7 @@ export function ConversationView({ instanceId }: { instanceId: string }) {
       <EmptyState
         title="Nenhuma conversa ainda."
         description="As conversas aparecem aqui assim que o WhatsApp da instancia comecar a receber mensagens."
+        icon={MessagesSquare}
       />
     );
   }

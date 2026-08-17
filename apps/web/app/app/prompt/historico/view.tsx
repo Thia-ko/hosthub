@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { History, Server } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { MobileCard, MobileCardList, MobileCardRow } from "@/components/mobile-card";
 import { apiFetch } from "@/lib/api-client";
@@ -62,7 +63,7 @@ export function PromptHistoryView({ instanceId, basePath }: { instanceId: string
       {versionsLoading ? <LoadingState /> : null}
       {!versionsLoading && versionsError ? <ErrorState message={versionsError} onRetry={reloadVersions} /> : null}
       {!versionsLoading && !versionsError && versions && versions.length === 0 ? (
-        <EmptyState title="Nenhuma versao salva ainda." />
+        <EmptyState title="Nenhuma versao salva ainda." icon={History} />
       ) : null}
       {!versionsLoading && !versionsError && versions && versions.length > 0 ? (
         <>
@@ -130,7 +131,7 @@ export default function PromptHistoryPage() {
     return (
       <div className="flex flex-col gap-2">
         <h1 className="text-xl font-semibold">Historico de versoes</h1>
-        <EmptyState title="Nenhuma instancia associada a sua conta ainda." />
+        <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />
       </div>
     );
   }

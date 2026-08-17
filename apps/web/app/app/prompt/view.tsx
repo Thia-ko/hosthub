@@ -1,5 +1,6 @@
 "use client";
 
+import { Server } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,7 +136,7 @@ export default function PromptEditorPage() {
     return <LoadingState />;
   }
   if (instances.length === 0 || !selectedId) {
-    return <EmptyState title="Nenhuma instancia associada a sua conta ainda." />;
+    return <EmptyState title="Nenhuma instancia associada a sua conta ainda." icon={Server} />;
   }
   return <PromptEditorView key={selectedId} instanceId={selectedId} />;
 }
