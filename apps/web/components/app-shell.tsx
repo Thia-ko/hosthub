@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -160,6 +160,11 @@ function activeHref(pathname: string, items: NavItem[]): string | null {
   return matches[0]?.href ?? null;
 }
 
+function subscribeToTourDismissal(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
 export function AppShell({
   section,
   user,
@@ -177,18 +182,17 @@ export function AppShell({
   const items = NAV[section];
   const active = useMemo(() => activeHref(pathname, items), [pathname, items]);
   const tourSteps = TOUR_STEPS[section];
-  const [tourActive, setTourActive] = useState(false);
   const [tourStep, setTourStep] = useState(0);
-
-  useEffect(() => {
-    if (!window.localStorage.getItem(`${ONBOARDING_SEEN_PREFIX}${section}`)) {
-      setTourStep(0);
-      setTourActive(true);
-    }
-  }, [section]);
+  const tourSeen = useSyncExternalStore(
+    subscribeToTourDismissal,
+    () => window.localStorage.getItem(`${ONBOARDING_SEEN_PREFIX}${section}`) !== null,
+    () => true
+  );
+  const [tourDismissed, setTourDismissed] = useState(false);
+  const tourActive = !tourSeen && !tourDismissed;
 
   function closeTour() {
-    setTourActive(false);
+    setTourDismissed(true);
     window.localStorage.setItem(`${ONBOARDING_SEEN_PREFIX}${section}`, "1");
   }
 

@@ -58,6 +58,10 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
 
   useEffect(() => {
     if (pendingTemplate) return;
+    // Fetching on mount is a necessary Effect (react.dev/learn/you-might-not-need-an-effect
+    // #fetching-data); loadCurrentVersion resets loading/error synchronously before the fetch
+    // settles, which set-state-in-effect can't distinguish from a derived-state anti-pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCurrentVersion(instanceId);
   }, [instanceId, loadCurrentVersion, pendingTemplate]);
 

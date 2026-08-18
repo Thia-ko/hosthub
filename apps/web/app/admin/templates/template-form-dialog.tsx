@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,15 +36,17 @@ export function TemplateFormDialog({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setNiche(template?.niche ?? "");
-    setTitle(template?.title ?? "");
-    setDescription(template?.description ?? "");
-    setIconEmoji(template?.icon_emoji ?? "");
-    setContent(template?.content ?? "");
-    setError(null);
-  }, [open, template]);
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) {
+      setNiche(template?.niche ?? "");
+      setTitle(template?.title ?? "");
+      setDescription(template?.description ?? "");
+      setIconEmoji(template?.icon_emoji ?? "");
+      setContent(template?.content ?? "");
+      setError(null);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,7 +70,7 @@ export function TemplateFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>

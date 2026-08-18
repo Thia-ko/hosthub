@@ -171,6 +171,10 @@ function ConversationThread({
   );
 
   useEffect(() => {
+    // Fetching on mount is a necessary Effect (react.dev/learn/you-might-not-need-an-effect
+    // #fetching-data); loadOlder resets loading/error synchronously before the fetch settles,
+    // which set-state-in-effect can't distinguish from a derived-state anti-pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOlder(0);
   }, [loadOlder]);
 
@@ -298,6 +302,10 @@ export function ConversationView({ instanceId }: { instanceId: string }) {
   );
 
   useEffect(() => {
+    // Fetching on mount is a necessary Effect (react.dev/learn/you-might-not-need-an-effect
+    // #fetching-data); loadPage resets loading/error synchronously before the fetch settles,
+    // which set-state-in-effect can't distinguish from a derived-state anti-pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPage(0);
   }, [loadPage]);
 
