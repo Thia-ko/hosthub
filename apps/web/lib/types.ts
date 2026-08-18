@@ -307,3 +307,13 @@ export interface MetaConnectResult {
   display_phone_number: string;
   verified_name: string;
 }
+
+export interface DemoLead {
+  id: string;
+  name: string;
+  contact: string;
+  business_name: string | null;
+  note: string | null;
+  created_at: string;
+  contacted_at: string | null;
+}

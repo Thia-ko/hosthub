@@ -1,7 +1,7 @@
 import time
 from collections import defaultdict, deque
 
-from fastapi import HTTPException, Path, status
+from fastapi import HTTPException, Path, Request, status
 
 # Single-process, in-memory limiter: fine for the current one-replica API deployment.
 # If the API ever scales to multiple replicas, this needs a shared store (e.g. Redis) instead.
@@ -27,3 +27,9 @@ def _check(key: str) -> None:
 async def rate_limit_webhook_token(webhook_token: str = Path(...)) -> None:
     """Caps requests per webhook_token so a leaked or misbehaving token can't flood the API."""
     _check(f"webhook:{webhook_token}")
+
+
+async def rate_limit_demo_ip(request: Request) -> None:
+    """Caps requests por IP aparente para o chat publico da demo, alem do cap de mensagens por
+    sessao e do orcamento diario de tokens (app.services.demo_sandbox), ambos no banco."""
+    _check(f"demo:{request.client.host if request.client else 'unknown'}")

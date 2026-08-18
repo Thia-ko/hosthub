@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     AI_ASSIST_MODEL: str = "gpt-4o-mini"
     AI_ASSIST_TRANSCRIBE_MODEL: str = "whisper-1"
     AI_ASSIST_DAILY_TOKEN_LIMIT_DEFAULT: int = 50000
+    DEMO_DAILY_TOKEN_LIMIT: int = 20000
+    DEMO_REPLY_MAX_TOKENS: int = 220
 
     EVOLUTION_API_BASE_URL: str = ""
     EVOLUTION_API_KEY: str = ""

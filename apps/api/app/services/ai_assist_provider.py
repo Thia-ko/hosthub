@@ -53,10 +53,16 @@ class AiAssistProvider(ABC):
 
     @abstractmethod
     async def reply(
-        self, system_prompt: str, history: list[dict], user_message: str, image_url: str | None = None
+        self,
+        system_prompt: str,
+        history: list[dict],
+        user_message: str,
+        image_url: str | None = None,
+        max_tokens: int | None = None,
     ) -> tuple[str, int, int]:
         """Roleplays the agent for a sandbox test or a real customer message. When `image_url` is
-        set, the message is sent as multimodal content (requires a vision-capable model).
+        set, the message is sent as multimodal content (requires a vision-capable model). When
+        `max_tokens` is set, caps the length of the generated response.
         Returns (reply, prompt_tokens, completion_tokens)."""
 
     @abstractmethod
@@ -90,12 +96,15 @@ class OpenAiCompatibleProvider(AiAssistProvider):
     def is_configured(self) -> bool:
         return bool(self._api_key)
 
-    async def _chat_completion(self, messages: list[dict]) -> tuple[str, int, int]:
+    async def _chat_completion(self, messages: list[dict], max_tokens: int | None = None) -> tuple[str, int, int]:
+        payload = {"model": self._model, "messages": messages}
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         async with httpx.AsyncClient(base_url=self._base_url, timeout=60) as client:
             response = await client.post(
                 "/chat/completions",
                 headers={"Authorization": f"Bearer {self._api_key}"},
-                json={"model": self._model, "messages": messages},
+                json=payload,
             )
             response.raise_for_status()
             data = response.json()
@@ -115,7 +124,12 @@ class OpenAiCompatibleProvider(AiAssistProvider):
         )
 
     async def reply(
-        self, system_prompt: str, history: list[dict], user_message: str, image_url: str | None = None
+        self,
+        system_prompt: str,
+        history: list[dict],
+        user_message: str,
+        image_url: str | None = None,
+        max_tokens: int | None = None,
     ) -> tuple[str, int, int]:
         user_content: str | list[dict] = user_message
         if image_url:
@@ -128,7 +142,7 @@ class OpenAiCompatibleProvider(AiAssistProvider):
             *history,
             {"role": "user", "content": user_content},
         ]
-        return await self._chat_completion(messages)
+        return await self._chat_completion(messages, max_tokens=max_tokens)
 
     async def transcribe(self, audio_url: str) -> str:
         async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:

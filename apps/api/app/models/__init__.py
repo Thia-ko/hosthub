@@ -6,6 +6,8 @@ from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientSt
 from app.models.conversation_analysis import ConversationAnalysis
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
+from app.models.demo_chat_log import DemoChatLog
+from app.models.demo_lead import DemoLead
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
 from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
@@ -59,4 +61,6 @@ __all__ = [
     "KnowledgeFileKind",
     "KnowledgeFileStatus",
     "KnowledgeFileUsageMode",
+    "DemoChatLog",
+    "DemoLead",
 ]

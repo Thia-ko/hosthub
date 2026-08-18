@@ -18,6 +18,7 @@ import {
   MessagesSquare,
   Palette,
   Server,
+  UserPlus,
   Users,
   Webhook,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const NAV: Record<Section, NavItem[]> = {
   admin: [
     { href: "/admin", label: "Visao geral", icon: LayoutDashboard },
     { href: "/admin/instances", label: "Instancias", icon: Server },
+    { href: "/admin/leads", label: "Leads", icon: UserPlus },
     { href: "/admin/templates", label: "Templates", icon: FileText },
     { href: "/admin/theme", label: "Tema", icon: Palette },
     { href: "/admin/ai-settings", label: "IA", icon: Bot },

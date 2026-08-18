@@ -8,6 +8,7 @@ from app.api.v1.routers import (
     campaigns,
     conversations,
     dashboard,
+    demo,
     health,
     instance_members,
     instances,
@@ -39,3 +40,4 @@ api_router.include_router(outbound_webhooks.router)
 api_router.include_router(campaigns.router)
 api_router.include_router(whatsapp_connection.router)
 api_router.include_router(knowledge_files.router)
+api_router.include_router(demo.router)
