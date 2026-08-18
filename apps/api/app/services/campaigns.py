@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.db.session import async_session
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientStatus
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.instance import Instance, InstanceStatus
 from app.services.conversation_threads import get_or_create_thread
 from app.services.whatsapp_channel import WhatsAppChannelError, send_reply
@@ -116,6 +116,7 @@ async def _process_recipient(
                 direction=MessageDirection.OUTBOUND,
                 kind=MessageKind.TEXT,
                 text=campaign.message,
+                origin=MessageOrigin.SYSTEM,
             )
         )
         db.add(

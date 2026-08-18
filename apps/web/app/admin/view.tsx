@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bot, FileText, MessageSquare, MessagesSquare, Server } from "lucide-react";
+import { Bot, FileText, MessageSquare, MessagesSquare, Server, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/sparkline";
 import { StatCard } from "@/components/stat-card";
@@ -37,6 +37,18 @@ export default function AdminHomeView() {
         </StatCard>
         <StatCard title="Conversas aguardando humano" icon={MessagesSquare}>
           <p className="text-2xl font-semibold">{overview.escalated_threads}</p>
+        </StatCard>
+        <StatCard title="Resolvido pela IA" icon={Sparkles}>
+          {overview.threads_with_activity > 0 ? (
+            <>
+              <p className="text-2xl font-semibold">{overview.resolution_rate_pct}%</p>
+              <p className="text-xs text-muted-foreground">
+                {overview.ai_resolved_threads} de {overview.threads_with_activity} conversas sem humano
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem conversas no periodo</p>
+          )}
         </StatCard>
         <StatCard title="Mensagens de clientes hoje" icon={MessageSquare} className="sm:col-span-2">
           <p className="text-2xl font-semibold">{overview.messages_today}</p>

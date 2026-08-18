@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
 from app.db.session import async_session
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance
 from app.models.satisfaction_response import SatisfactionResponse
@@ -86,6 +86,7 @@ async def _maybe_request_feedback_for_thread(thread_id, cutoff: datetime) -> Non
                 direction=MessageDirection.OUTBOUND,
                 kind=MessageKind.TEXT,
                 text=CSAT_QUESTION,
+                origin=MessageOrigin.SYSTEM,
             )
         )
         db.add(SatisfactionResponse(instance_id=thread.instance_id, sender_number=thread.sender_number))

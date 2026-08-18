@@ -4,7 +4,7 @@ from app.models.attendant_pattern import AttendantPattern
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientStatus
 from app.models.conversation_analysis import ConversationAnalysis
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
@@ -41,6 +41,7 @@ __all__ = [
     "ConversationMessage",
     "MessageDirection",
     "MessageKind",
+    "MessageOrigin",
     "ExtractedData",
     "FaqItem",
     "AttendantPattern",

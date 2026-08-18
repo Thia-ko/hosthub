@@ -11,10 +11,16 @@ import pytest
 
 from app.db.session import async_session
 from app.models.ai_assist_request import AiAssistRequest
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
+from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus
 from app.models.user import User, UserRole
-from app.services.dashboard_stats import get_daily_message_counts, get_daily_token_usage
+from app.services.dashboard_stats import (
+    AVG_MANUAL_HANDLE_MINUTES,
+    get_daily_message_counts,
+    get_daily_token_usage,
+    get_resolution_stats,
+)
 
 
 @pytest.fixture
@@ -42,6 +48,7 @@ async def instance():
 
     async with async_session() as db:
         await db.execute(ConversationMessage.__table__.delete().where(ConversationMessage.instance_id == instance_id))
+        await db.execute(ConversationThread.__table__.delete().where(ConversationThread.instance_id == instance_id))
         await db.execute(AiAssistRequest.__table__.delete().where(AiAssistRequest.instance_id == instance_id))
         await db.execute(Instance.__table__.delete().where(Instance.id == instance_id))
         await db.execute(User.__table__.delete().where(User.id == owner_id))
@@ -72,6 +79,39 @@ async def _outbound_message(instance: Instance, age: timedelta) -> None:
                 direction=MessageDirection.OUTBOUND,
                 kind=MessageKind.TEXT,
                 text="Resposta",
+                created_at=datetime.now(timezone.utc) - age,
+            )
+        )
+        await db.commit()
+
+
+async def _inbound_from(instance: Instance, sender_number: str, age: timedelta) -> None:
+    async with async_session() as db:
+        db.add(
+            ConversationMessage(
+                instance_id=instance.id,
+                sender_number=sender_number,
+                direction=MessageDirection.INBOUND,
+                kind=MessageKind.TEXT,
+                text="Oi",
+                created_at=datetime.now(timezone.utc) - age,
+            )
+        )
+        await db.commit()
+
+
+async def _outbound_from(
+    instance: Instance, sender_number: str, origin: MessageOrigin, age: timedelta
+) -> None:
+    async with async_session() as db:
+        db.add(
+            ConversationMessage(
+                instance_id=instance.id,
+                sender_number=sender_number,
+                direction=MessageDirection.OUTBOUND,
+                kind=MessageKind.TEXT,
+                text="Resposta",
+                origin=origin,
                 created_at=datetime.now(timezone.utc) - age,
             )
         )
@@ -180,3 +220,103 @@ async def test_token_usage_buckets_by_day_and_scopes_to_instance(instance):
     today = datetime.now(timezone.utc).date()
     assert dict(result)[today] == 200
     assert sum(c for _d, c in result) == 200
+
+
+async def test_resolution_stats_empty_instance_returns_none_rate(instance):
+    async with async_session() as db:
+        stats = await get_resolution_stats(db, instance_id=instance.id, days=7)
+    assert stats.threads_with_activity == 0
+    assert stats.ai_resolved_threads == 0
+    assert stats.resolution_rate_pct is None
+    assert stats.estimated_hours_saved == 0.0
+
+
+async def test_resolution_stats_splits_ai_resolved_from_human_touched(instance):
+    await _inbound_from(instance, "5511900000001", timedelta(hours=1))
+    await _outbound_from(instance, "5511900000001", MessageOrigin.AI, timedelta(minutes=59))
+
+    await _inbound_from(instance, "5511900000002", timedelta(hours=1))
+    await _outbound_from(instance, "5511900000002", MessageOrigin.HUMAN, timedelta(minutes=59))
+
+    async with async_session() as db:
+        stats = await get_resolution_stats(db, instance_id=instance.id, days=7)
+
+    assert stats.threads_with_activity == 2
+    assert stats.ai_resolved_threads == 1
+    assert stats.resolution_rate_pct == 50.0
+    assert stats.estimated_hours_saved == round(1 * AVG_MANUAL_HANDLE_MINUTES / 60, 1)
+
+
+async def test_resolution_stats_system_origin_still_counts_as_ai_resolved(instance):
+    await _inbound_from(instance, "5511900000003", timedelta(hours=1))
+    await _outbound_from(instance, "5511900000003", MessageOrigin.SYSTEM, timedelta(minutes=59))
+
+    async with async_session() as db:
+        stats = await get_resolution_stats(db, instance_id=instance.id, days=7)
+
+    assert stats.threads_with_activity == 1
+    assert stats.ai_resolved_threads == 1
+    assert stats.resolution_rate_pct == 100.0
+
+
+async def test_resolution_stats_excludes_currently_escalated_thread(instance):
+    await _inbound_from(instance, "5511900000004", timedelta(hours=1))
+    async with async_session() as db:
+        db.add(
+            ConversationThread(
+                instance_id=instance.id, sender_number="5511900000004", ai_paused=True, escalated=True
+            )
+        )
+        await db.commit()
+
+    async with async_session() as db:
+        stats = await get_resolution_stats(db, instance_id=instance.id, days=7)
+
+    assert stats.threads_with_activity == 1
+    assert stats.ai_resolved_threads == 0
+    assert stats.resolution_rate_pct == 0.0
+
+
+async def test_resolution_stats_excludes_out_of_window_activity(instance):
+    await _inbound_from(instance, "5511900000005", timedelta(days=10))
+
+    async with async_session() as db:
+        stats = await get_resolution_stats(db, instance_id=instance.id, days=7)
+
+    assert stats.threads_with_activity == 0
+
+
+async def test_resolution_stats_scoped_to_instance(instance):
+    other_unique = uuid.uuid4().hex[:8]
+    async with async_session() as db:
+        other_owner = User(
+            email=f"owner-{other_unique}@example.com", password_hash="x", role=UserRole.CLIENT, full_name="Other"
+        )
+        db.add(other_owner)
+        await db.flush()
+        other_instance = Instance(
+            name=f"Other {other_unique}",
+            slug=f"other-{other_unique}",
+            owner_user_id=other_owner.id,
+            created_by_admin_id=other_owner.id,
+            status=InstanceStatus.ACTIVE,
+        )
+        db.add(other_instance)
+        await db.commit()
+        await db.refresh(other_instance)
+
+    try:
+        await _inbound_from(instance, "5511900000006", timedelta(hours=1))
+        await _inbound_from(other_instance, "5511900000007", timedelta(hours=1))
+
+        async with async_session() as db:
+            scoped = await get_resolution_stats(db, instance_id=instance.id, days=7)
+        assert scoped.threads_with_activity == 1
+    finally:
+        async with async_session() as db:
+            await db.execute(
+                ConversationMessage.__table__.delete().where(ConversationMessage.instance_id == other_instance.id)
+            )
+            await db.execute(Instance.__table__.delete().where(Instance.id == other_instance.id))
+            await db.execute(User.__table__.delete().where(User.id == other_owner.id))
+            await db.commit()

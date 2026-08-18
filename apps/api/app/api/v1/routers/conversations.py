@@ -5,7 +5,7 @@ from sqlalchemy.orm import aliased
 
 from app.core.deps import get_owned_instance
 from app.db.session import get_db
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance
 from app.schemas.conversation import ConversationMessageOut, ConversationReplyRequest, ConversationSummary
@@ -101,6 +101,7 @@ async def reply_to_conversation(
         direction=MessageDirection.OUTBOUND,
         kind=MessageKind.TEXT,
         text=payload.text,
+        origin=MessageOrigin.HUMAN,
     )
     db.add(message)
     thread.ai_paused = True

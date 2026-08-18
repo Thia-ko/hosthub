@@ -10,7 +10,7 @@ from app.core.deps import get_instance_by_webhook_token
 from app.core.rate_limit import rate_limit_webhook_token
 from app.db.session import get_db
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
 from app.models.prompt_version import PromptVersion
@@ -77,6 +77,7 @@ async def _maybe_capture_csat(db: AsyncSession, instance: Instance, parsed: Pars
                 direction=MessageDirection.OUTBOUND,
                 kind=MessageKind.TEXT,
                 text=CSAT_THANKS_MESSAGE,
+                origin=MessageOrigin.SYSTEM,
             )
         )
         await db.commit()
@@ -99,6 +100,7 @@ async def _handoff_to_human(
             direction=MessageDirection.OUTBOUND,
             kind=MessageKind.TEXT,
             text=_HANDOFF_ACK_MESSAGE,
+            origin=MessageOrigin.SYSTEM,
         )
     )
     thread.ai_paused = True
@@ -186,6 +188,7 @@ async def _maybe_auto_reply(
                 direction=MessageDirection.OUTBOUND,
                 kind=MessageKind.TEXT,
                 text=reply,
+                origin=MessageOrigin.AI,
             )
         )
 

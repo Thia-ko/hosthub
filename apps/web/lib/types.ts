@@ -137,6 +137,10 @@ export interface DashboardSummary {
   ai_assist_daily_limit: number;
   csat_average: number | null;
   csat_response_count: number;
+  threads_with_activity: number;
+  ai_resolved_threads: number;
+  resolution_rate_pct: number | null;
+  estimated_hours_saved: number;
 }
 
 export interface PromptTemplate {
@@ -241,6 +245,10 @@ export interface AdminDashboardOverview {
   ai_tokens_used_today: number;
   messages_last_7_days: DailyCount[];
   ai_tokens_last_7_days: DailyCount[];
+  threads_with_activity: number;
+  ai_resolved_threads: number;
+  resolution_rate_pct: number | null;
+  estimated_hours_saved: number;
 }
 
 export interface DataReadiness {

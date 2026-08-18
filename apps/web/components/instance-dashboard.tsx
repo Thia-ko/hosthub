@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { Bot, FileText, MessageSquare, Star } from "lucide-react";
+import { Bot, FileText, MessageSquare, Sparkles, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
@@ -74,6 +74,21 @@ export function InstanceDashboard({ instanceId, promptHref }: { instanceId: stri
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Sem avaliacoes ainda</p>
+          )}
+        </StatCard>
+        <StatCard title="Resolvido pela IA" icon={Sparkles}>
+          {summary.threads_with_activity > 0 ? (
+            <>
+              <p className="text-2xl font-semibold">{summary.resolution_rate_pct}%</p>
+              <p className="text-xs text-muted-foreground">
+                {summary.ai_resolved_threads} de {summary.threads_with_activity} conversas sem humano
+              </p>
+              <p className="text-xs text-muted-foreground">
+                ~{summary.estimated_hours_saved}h economizadas (estimado)
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem conversas no periodo</p>
           )}
         </StatCard>
       </div>

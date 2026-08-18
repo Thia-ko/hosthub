@@ -15,7 +15,7 @@ from app.models.prompt_version import PromptVersion
 from app.models.satisfaction_response import SatisfactionResponse
 from app.schemas.dashboard import AdminDashboardOverview, DailyCount, DashboardSummary, HourlyCount
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
-from app.services.dashboard_stats import get_daily_message_counts, get_daily_token_usage
+from app.services.dashboard_stats import get_daily_message_counts, get_daily_token_usage, get_resolution_stats
 
 router = APIRouter(prefix="/instances/{instance_id}/dashboard", tags=["dashboard"])
 admin_router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -64,6 +64,7 @@ async def get_admin_overview(db: AsyncSession = Depends(get_db)) -> AdminDashboa
 
     daily_messages = await get_daily_message_counts(db)
     daily_tokens = await get_daily_token_usage(db)
+    resolution_stats = await get_resolution_stats(db)
 
     return AdminDashboardOverview(
         total_instances=sum(counts_by_status.values()),
@@ -76,6 +77,10 @@ async def get_admin_overview(db: AsyncSession = Depends(get_db)) -> AdminDashboa
         ai_tokens_used_today=ai_tokens_used_today,
         messages_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_messages],
         ai_tokens_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_tokens],
+        threads_with_activity=resolution_stats.threads_with_activity,
+        ai_resolved_threads=resolution_stats.ai_resolved_threads,
+        resolution_rate_pct=resolution_stats.resolution_rate_pct,
+        estimated_hours_saved=resolution_stats.estimated_hours_saved,
     )
 
 
@@ -115,6 +120,7 @@ async def get_summary(
     ai_assist_usage_today = await get_usage_today(db, instance.id)
     daily_messages = await get_daily_message_counts(db, instance_id=instance.id)
     daily_tokens = await get_daily_token_usage(db, instance_id=instance.id)
+    resolution_stats = await get_resolution_stats(db, instance_id=instance.id)
 
     csat_average, csat_response_count = (
         await db.execute(
@@ -135,4 +141,8 @@ async def get_summary(
         ai_assist_daily_limit=get_daily_limit(instance),
         csat_average=round(float(csat_average), 2) if csat_average is not None else None,
         csat_response_count=csat_response_count,
+        threads_with_activity=resolution_stats.threads_with_activity,
+        ai_resolved_threads=resolution_stats.ai_resolved_threads,
+        resolution_rate_pct=resolution_stats.resolution_rate_pct,
+        estimated_hours_saved=resolution_stats.estimated_hours_saved,
     )

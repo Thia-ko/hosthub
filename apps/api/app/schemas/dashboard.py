@@ -24,6 +24,10 @@ class DashboardSummary(BaseModel):
     ai_assist_daily_limit: int
     csat_average: float | None
     csat_response_count: int
+    threads_with_activity: int
+    ai_resolved_threads: int
+    resolution_rate_pct: float | None
+    estimated_hours_saved: float
 
 
 class AdminDashboardOverview(BaseModel):
@@ -37,3 +41,7 @@ class AdminDashboardOverview(BaseModel):
     ai_tokens_used_today: int
     messages_last_7_days: list[DailyCount]
     ai_tokens_last_7_days: list[DailyCount]
+    threads_with_activity: int
+    ai_resolved_threads: int
+    resolution_rate_pct: float | None
+    estimated_hours_saved: float
