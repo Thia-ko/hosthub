@@ -16,6 +16,12 @@ class InstanceStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
+class WhatsAppProvider(str, enum.Enum):
+    WHATSBOTMAIS = "whatsbotmais"
+    EVOLUTION = "evolution"
+    META_CLOUD = "meta_cloud"
+
+
 class Instance(Base):
     __tablename__ = "instances"
 
@@ -32,6 +38,11 @@ class Instance(Base):
     )
     ai_assist_daily_token_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     whatsapp_instance_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    whatsapp_provider: Mapped[WhatsAppProvider | None] = mapped_column(
+        Enum(WhatsAppProvider, name="whatsapp_provider"), nullable=True
+    )
+    meta_phone_number_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    meta_access_token: Mapped[str | None] = mapped_column(String, nullable=True)
     current_prompt_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prompt_versions.id"), nullable=True
     )

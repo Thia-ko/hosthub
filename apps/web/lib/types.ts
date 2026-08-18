@@ -258,3 +258,44 @@ export interface GeneratedPrompt {
   change_note: string | null;
   created_at: string;
 }
+
+export type KnowledgeFileKind = "text" | "image" | "audio" | "video";
+export type KnowledgeFileUsageMode = "auto" | "manual" | "disabled";
+export type KnowledgeFileStatus = "ready" | "processing_failed";
+
+export interface KnowledgeFile {
+  id: string;
+  filename: string;
+  content_type: string;
+  kind: KnowledgeFileKind;
+  usage_mode: KnowledgeFileUsageMode;
+  include_next: boolean;
+  status: KnowledgeFileStatus;
+  size_bytes: number;
+  content_text: string | null;
+  created_at: string;
+}
+
+export type WhatsAppProvider = "whatsbotmais" | "evolution" | "meta_cloud";
+
+export interface WhatsAppConnection {
+  provider: WhatsAppProvider | null;
+  whatsapp_instance_name: string | null;
+  meta_phone_number_id: string | null;
+}
+
+export interface EvolutionQr {
+  base64: string | null;
+  code: string | null;
+  pairing_code: string | null;
+  state: string;
+}
+
+export interface EvolutionStatus {
+  state: string;
+}
+
+export interface MetaConnectResult {
+  display_phone_number: string;
+  verified_name: string;
+}

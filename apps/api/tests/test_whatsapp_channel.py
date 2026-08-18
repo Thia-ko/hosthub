@@ -1,10 +1,12 @@
 """
 Unit tests for inbound WhatsApp payload parsing (app.services.whatsapp_channel).
 
-These pin down the *currently assumed* behavior for WhatsBotMais and Evolution API webhooks.
-The audio/image mediaType values (`_AUDIO_MEDIA_TYPES` / `_IMAGE_MEDIA_TYPES`) are flagged as
-[INFERENCE] in docs/integrations/whatsbotmais.md - not yet confirmed against a real payload.
-If that inference turns out wrong, these tests document exactly what changes.
+These pin down the *confirmed* behavior for WhatsBotMais and Evolution API webhooks. The
+audio/image mediaType values (`_AUDIO_MEDIA_TYPES` / `_IMAGE_MEDIA_TYPES`) were CONFIRMED
+against real production traffic on 2026-08-18 - see docs/integrations/whatsbotmais.md. That
+same traffic also caught a real bug: document/PDF attachments carry mediaType "application"
+(not "document"), which fell through to plain-text handling with the filename as the message
+body before the fix in `_UNSUPPORTED_MEDIA_TYPES`.
 """
 
 from types import SimpleNamespace
@@ -191,13 +193,32 @@ def test_whatsbotmais_media_without_url_is_ignored():
 
 
 def test_whatsbotmais_unsupported_media_type_is_ignored():
-    for media_type in ("video", "document", "sticker", "location", "vcard", "contact", "contactsArray"):
+    for media_type in ("video", "document", "application", "sticker", "location", "vcard", "contact", "contactsArray"):
         payload = {
             "mensagem": {"fromMe": False, "body": "", "mediaType": media_type, "mediaUrl": "x"},
             "sender": "557991358293",
             "token_origin": "tok",
         }
         assert parse_inbound_message(payload) is None, f"expected {media_type} to be ignored"
+
+
+def test_whatsbotmais_document_attachment_does_not_leak_filename_as_text():
+    """Regression test from a real payload captured 2026-08-18: a PDF sent to a live WhatsBotMais
+    connection carries mediaType "application" and `mensagem.body` set to the *filename*, not
+    customer text. Before `_UNSUPPORTED_MEDIA_TYPES` included "application", this fell through to
+    the plain-text branch and the auto-reply pipeline would have replied to the filename string."""
+    payload = {
+        "mensagem": {
+            "fromMe": False,
+            "body": "11422dcf-8600-43c3-9332-445a4c055ccd_WhatsBot_Mais_Demonstracao.pdf",
+            "mediaType": "application",
+            "mediaUrl": "https://object.sp2.eveo.com.br/.../WhatsBot_Mais_Demonstracao.pdf",
+        },
+        "sender": "557991358293",
+        "token_origin": "tok",
+    }
+
+    assert parse_inbound_message(payload) is None
 
 
 def test_whatsbotmais_audio_classification_is_logged(caplog):
@@ -354,7 +375,9 @@ async def test_send_reply_falls_back_to_evolution_when_no_token(monkeypatch):
 
     monkeypatch.setattr("app.services.whatsapp_channel.send_whatsbotmais_reply", fake_whatsbotmais)
     monkeypatch.setattr("app.services.whatsapp_channel.send_text_message", fake_evolution)
-    instance = SimpleNamespace(whatsapp_instance_name="minha-instancia")
+    instance = SimpleNamespace(
+        whatsapp_instance_name="minha-instancia", whatsapp_provider=None, meta_phone_number_id=None, meta_access_token=None
+    )
 
     await send_reply(instance, "557991358293", "oi", None)
 
@@ -362,7 +385,9 @@ async def test_send_reply_falls_back_to_evolution_when_no_token(monkeypatch):
 
 
 async def test_send_reply_raises_when_neither_channel_is_available():
-    instance = SimpleNamespace(whatsapp_instance_name=None)
+    instance = SimpleNamespace(
+        whatsapp_instance_name=None, whatsapp_provider=None, meta_phone_number_id=None, meta_access_token=None
+    )
 
     with pytest.raises(WhatsAppChannelError, match="Nenhum canal"):
         await send_reply(instance, "557991358293", "oi", None)

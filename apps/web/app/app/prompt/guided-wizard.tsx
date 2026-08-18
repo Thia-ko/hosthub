@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 /** Sections mirror the exact headings `prompt_generator.py` asks the AI to produce
  * (`_build_full_generation_prompt`), so a prompt built here diffs cleanly against one the
@@ -74,6 +78,13 @@ const SECTIONS = [
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
 
+const FULL_TEXT_KEY = "prompt-completo" as const;
+type NavKey = SectionKey | typeof FULL_TEXT_KEY;
+
+const NAV_KEYS: NavKey[] = [...SECTIONS.map((s) => s.key), FULL_TEXT_KEY];
+
+const FORMALITY_OPTIONS = ["Muito informal", "Informal", "Neutro", "Formal", "Muito formal"] as const;
+
 function parseInitialAnswers(content: string): Record<SectionKey, string> {
   const matches = [...content.matchAll(/^##\s+(.+)$/gm)];
   const bodyFor = (heading: string): string => {
@@ -93,10 +104,23 @@ function assemble(answers: Record<SectionKey, string>): string {
     .join("\n\n");
 }
 
-/** Guided, non-technical alternative to the raw prompt textarea: walks the same sections the
- * auto-generation pipeline fills from real conversations, one at a time, then assembles them
- * into the identical section format. Seeds itself once from `initialContent` - callers remount
- * it (via `key`) when the underlying prompt version changes. */
+/** Appends `sentence` to a section's existing text on its own line - used by the quick-fill
+ * helpers below so clicking "Adicionar ao texto" never clobbers what's already there. */
+function appendLine(existing: string, sentence: string): string {
+  const trimmed = existing.trim();
+  return trimmed ? `${trimmed}\n${sentence}` : sentence;
+}
+
+/** Unified, non-technical hub for building the agent's prompt: all sections the auto-generation
+ * pipeline fills from real conversations are stacked vertically (no tab/step navigation to get
+ * lost in), with a sticky side nav for quick jumps and a scroll-based highlight of the current
+ * section. A couple of sections (tone, business info) also offer small structured pickers that
+ * compose a suggested sentence into the free-text box on click, for people who don't know what
+ * to write from a blank page - every section still boils down to plain text underneath, so
+ * nothing here is mandatory. The last "Prompt completo" section is the exact text that gets
+ * saved: normally kept in sync with the sections above, but directly editable too (replaces the
+ * old separate "Avancado" mode - there's only one view now). Seeds itself once from
+ * `initialContent` - callers remount it (via `key`) when the underlying prompt version changes. */
 export function GuidedWizard({
   initialContent,
   onAssembledChange,
@@ -105,61 +129,226 @@ export function GuidedWizard({
   onAssembledChange: (content: string) => void;
 }) {
   const [answers, setAnswers] = useState<Record<SectionKey, string>>(() => parseInitialAnswers(initialContent));
-  const [step, setStep] = useState(0);
-  const assembled = useMemo(() => assemble(answers), [answers]);
-  const isReview = step === SECTIONS.length;
-  const totalSteps = SECTIONS.length + 1;
+  const [fullText, setFullText] = useState(initialContent);
+  const [activeKey, setActiveKey] = useState<NavKey>(SECTIONS[0].key);
+
+  const [formality, setFormality] = useState("");
+  const [usesEmojis, setUsesEmojis] = useState(false);
+  const [usesSlang, setUsesSlang] = useState(false);
+
+  const [businessName, setBusinessName] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [businessHours, setBusinessHours] = useState("");
+  const [businessContact, setBusinessContact] = useState("");
+
+  const sectionRefs = useRef<Record<NavKey, HTMLDivElement | null>>({} as Record<NavKey, HTMLDivElement | null>);
+
+  useEffect(() => {
+    function updateActiveFromScroll() {
+      const threshold = 120;
+      let current: NavKey = NAV_KEYS[0];
+      for (const key of NAV_KEYS) {
+        const el = sectionRefs.current[key];
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= threshold) {
+          current = key;
+        } else {
+          break;
+        }
+      }
+      setActiveKey(current);
+    }
+
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        updateActiveFromScroll();
+        ticking = false;
+      });
+    }
+
+    updateActiveFromScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   function updateAnswer(key: SectionKey, value: string) {
     const next = { ...answers, [key]: value };
     setAnswers(next);
-    onAssembledChange(assemble(next));
+    const assembled = assemble(next);
+    setFullText(assembled);
+    onAssembledChange(assembled);
   }
 
-  const current = SECTIONS[step];
+  function updateFullText(value: string) {
+    setFullText(value);
+    onAssembledChange(value);
+  }
+
+  function scrollToSection(key: NavKey) {
+    sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function insertToneSuggestion() {
+    const parts = [
+      formality ? `Tom ${formality.toLowerCase()}` : null,
+      usesEmojis ? "usa emojis com moderacao" : "nao usa emojis",
+      usesSlang ? "usa girias e expressoes informais" : "evita girias",
+    ].filter((part): part is string => part !== null);
+    if (parts.length === 0) return;
+    updateAnswer("tom", appendLine(answers.tom, `${parts.join(", ")}.`));
+  }
+
+  function insertBusinessInfo() {
+    const parts = [
+      businessName,
+      businessAddress,
+      businessHours ? `Horario: ${businessHours}` : "",
+      businessContact ? `Contato: ${businessContact}` : "",
+    ].filter((part) => part.trim());
+    if (parts.length === 0) return;
+    updateAnswer("negocio", appendLine(answers.negocio, `${parts.join(". ")}.`));
+  }
+
+  function navButtonClass(key: NavKey): string {
+    return cn(
+      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+      activeKey === key
+        ? "bg-accent text-accent-foreground"
+        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <Progress value={((step + 1) / totalSteps) * 100} />
-        <p className="text-xs text-muted-foreground">
-          Etapa {step + 1} de {totalSteps} - {isReview ? "Revisao" : current.title}
-        </p>
-      </div>
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <nav className="flex gap-1 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:w-52 lg:shrink-0 lg:flex-col lg:overflow-visible lg:pb-0">
+        {SECTIONS.map((section) => (
+          <button
+            key={section.key}
+            type="button"
+            onClick={() => scrollToSection(section.key)}
+            className={navButtonClass(section.key)}
+          >
+            {section.title}
+            {answers[section.key]?.trim() ? (
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+            ) : null}
+          </button>
+        ))}
+        <button type="button" onClick={() => scrollToSection(FULL_TEXT_KEY)} className={navButtonClass(FULL_TEXT_KEY)}>
+          Prompt completo
+        </button>
+      </nav>
 
-      {!isReview ? (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium" htmlFor={`wizard-${current.key}`}>
-            {current.title}
+      <div className="flex flex-1 flex-col gap-4">
+        {SECTIONS.map((section) => (
+          <div
+            key={section.key}
+            id={`wizard-section-${section.key}`}
+            ref={(el) => {
+              sectionRefs.current[section.key] = el;
+            }}
+            className="scroll-mt-20 rounded-lg border p-4"
+          >
+            <label className="text-sm font-semibold" htmlFor={`wizard-textarea-${section.key}`}>
+              {section.title}
+            </label>
+            <p className="text-sm text-muted-foreground">{section.description}</p>
+
+            {section.key === "tom" ? (
+              <div className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-muted/30 p-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">Formalidade</Label>
+                  <Select value={formality} onValueChange={setFormality}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Escolher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FORMALITY_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <Checkbox checked={usesEmojis} onCheckedChange={(checked) => setUsesEmojis(checked === true)} />
+                  Usa emojis
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <Checkbox checked={usesSlang} onCheckedChange={(checked) => setUsesSlang(checked === true)} />
+                  Usa girias
+                </label>
+                <Button type="button" size="sm" variant="outline" onClick={insertToneSuggestion}>
+                  Adicionar ao texto
+                </Button>
+              </div>
+            ) : null}
+
+            {section.key === "negocio" ? (
+              <div className="mt-3 flex flex-col gap-2 rounded-md bg-muted/30 p-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder="Nome do negocio"
+                    value={businessName}
+                    onChange={(event) => setBusinessName(event.target.value)}
+                  />
+                  <Input
+                    placeholder="Endereco"
+                    value={businessAddress}
+                    onChange={(event) => setBusinessAddress(event.target.value)}
+                  />
+                  <Input
+                    placeholder="Horario de funcionamento"
+                    value={businessHours}
+                    onChange={(event) => setBusinessHours(event.target.value)}
+                  />
+                  <Input
+                    placeholder="Telefone/contato"
+                    value={businessContact}
+                    onChange={(event) => setBusinessContact(event.target.value)}
+                  />
+                </div>
+                <Button type="button" size="sm" variant="outline" className="w-fit" onClick={insertBusinessInfo}>
+                  Adicionar ao texto
+                </Button>
+              </div>
+            ) : null}
+
+            <Textarea
+              id={`wizard-textarea-${section.key}`}
+              className="mt-3 min-h-32"
+              value={answers[section.key]}
+              placeholder={section.placeholder}
+              onChange={(event) => updateAnswer(section.key, event.target.value)}
+            />
+          </div>
+        ))}
+
+        <div
+          id={`wizard-section-${FULL_TEXT_KEY}`}
+          ref={(el) => {
+            sectionRefs.current[FULL_TEXT_KEY] = el;
+          }}
+          className="scroll-mt-20 rounded-lg border p-4"
+        >
+          <label className="text-sm font-semibold" htmlFor="wizard-full-text">
+            Prompt completo
           </label>
-          <p className="text-sm text-muted-foreground">{current.description}</p>
+          <p className="text-sm text-muted-foreground">
+            Texto final que sera salvo. Montado automaticamente a partir das etapas acima, mas pode ser editado
+            direto aqui se preferir.
+          </p>
           <Textarea
-            id={`wizard-${current.key}`}
-            className="min-h-40"
-            value={answers[current.key]}
-            placeholder={current.placeholder}
-            onChange={(event) => updateAnswer(current.key, event.target.value)}
+            id="wizard-full-text"
+            className="mt-3 min-h-96 font-mono text-sm"
+            value={fullText}
+            onChange={(event) => updateFullText(event.target.value)}
           />
         </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-medium">Prompt montado</p>
-          <p className="text-sm text-muted-foreground">
-            Confira o resultado. Use &quot;Salvar nova versao&quot; abaixo para publicar, ou volte para ajustar alguma etapa.
-          </p>
-          <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-3 font-mono text-xs">
-            {assembled || "(nenhuma etapa preenchida ainda)"}
-          </pre>
-        </div>
-      )}
-
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
-          Voltar
-        </Button>
-        <Button onClick={() => setStep((s) => Math.min(SECTIONS.length, s + 1))} disabled={isReview}>
-          Avancar
-        </Button>
       </div>
     </div>
   );

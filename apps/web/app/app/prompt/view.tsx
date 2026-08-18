@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { AiPipelinePreview } from "@/components/ai-pipeline-preview";
 import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/state";
 import { GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
@@ -32,7 +31,6 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const [mode, setMode] = useState<"guided" | "advanced">("guided");
 
   const loadCurrentVersion = useCallback((id: string) => {
     setLoading(true);
@@ -86,7 +84,7 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Prompt da IA</h1>
+        <h1 className="text-xl font-semibold">Agente de IA</h1>
         <div className="flex items-center gap-2">
           <PromptSandbox instanceId={instanceId} promptContent={content} />
           <AiAssistPanel
@@ -111,33 +109,7 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
           <p className="text-sm text-muted-foreground">
             {current ? `Versao atual: ${current.version_number}` : "Nenhuma versao salva ainda."}
           </p>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={mode === "guided" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMode("guided")}
-            >
-              Guiado
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "advanced" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMode("advanced")}
-            >
-              Avancado
-            </Button>
-          </div>
-          {mode === "guided" ? (
-            <GuidedWizard key={current?.id ?? "new"} initialContent={content} onAssembledChange={setContent} />
-          ) : (
-            <Textarea
-              className="min-h-96 font-mono text-sm"
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-            />
-          )}
+          <GuidedWizard key={current?.id ?? "new"} initialContent={content} onAssembledChange={setContent} />
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="changeNote">Nota da alteracao (opcional)</Label>
             <Input id="changeNote" value={changeNote} onChange={(event) => setChangeNote(event.target.value)} />

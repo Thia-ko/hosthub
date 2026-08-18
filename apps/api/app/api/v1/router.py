@@ -11,11 +11,13 @@ from app.api.v1.routers import (
     health,
     instance_members,
     instances,
+    knowledge_files,
     outbound_webhooks,
     prompt_templates,
     prompts,
     theme,
     webhook_events,
+    whatsapp_connection,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -35,3 +37,5 @@ api_router.include_router(ai_settings.router)
 api_router.include_router(analytics.router)
 api_router.include_router(outbound_webhooks.router)
 api_router.include_router(campaigns.router)
+api_router.include_router(whatsapp_connection.router)
+api_router.include_router(knowledge_files.router)

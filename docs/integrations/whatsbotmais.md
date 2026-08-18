@@ -25,51 +25,67 @@ Content-Type: application/json
 
 ## Receber mensagem (webhook por conexao)
 
-O mesmo endpoint de webhook por conexao ("Webhooks | Triggers" no painel deles) despacha **4
-formatos de evento diferentes** — confirmado pela doc antiga
-([`webhook`](https://help.whaticket-saas.com/webhook)) e por um payload real de producao (mais
-novo que o exemplo da doc, formato "API Oficial" com ticket completo aninhado):
+O mesmo endpoint de webhook por conexao ("Webhooks | Triggers" no painel deles) despacha varios
+`acao` diferentes. **Verificado em 18/08/2026** contra uma bateria real de mensagens (texto,
+imagem, audio, documento/PDF e video) enviadas a uma conexao WhatsBotMais em producao e
+capturadas em `WebhookEvent.payload_json` — o que segue e fato observado, nao mais inferencia.
 
-1. **Mensagem de cliente** — o unico que o HostHub responde. Payload real:
+Cada mensagem do cliente dispara **dois webhooks quase simultaneos** com o mesmo conteudo em
+formatos diferentes:
+
+1. **`acao: "queue_webhook_from_internal"`** (ou `"from_internal"` em tickets mais antigos) —
+   `mensagem` e um **dict** com `body`/`mediaType`/`mediaUrl`. **Este e o unico formato que o
+   parser reconhece e responde.** Payload real (imagem):
    ```json
    {
+     "acao": "queue_webhook_from_internal",
      "mensagem": {
-       "id": 8824203, "fromMe": false, "body": "texto da mensagem",
-       "mediaType": "conversation",
-       "contact": {"number": "557991358293", "name": "..."}
+       "id": 11047610, "fromMe": false,
+       "body": "f3c0f45d-...-3EB0D8DFC5B7241B88EB80.jpg",
+       "mediaType": "image",
+       "mediaUrl": "https://object.sp2.eveo.com.br/.../f3c0f45d-....jpg"
      },
      "sender": "557991358293",
      "fromMe": false,
-     "token_origin": "AbCdEfGhIjKlMnOp",
+     "token_origin": "660d3e5ab0f1009004f",
      "ticket": {...}, "ticketData": {...}
    }
    ```
-   - `mensagem.mediaType == "conversation"` = texto puro.
-   - `mensagem.mediaType` em `"audio"`/`"ptt"` = audio: o HostHub baixa `mensagem.mediaUrl`,
-     transcreve via `AI_ASSIST_TRANSCRIBE_MODEL` (endpoint `/audio/transcriptions`, padrao
-     Whisper) e responde ao texto transcrito.
-   - `mensagem.mediaType == "image"` = imagem: o HostHub manda `mensagem.mediaUrl` direto pro
-     modelo de chat como conteudo multimodal (exige `AI_ASSIST_MODEL` com suporte a visao, ex:
-     `gpt-4o-mini` ja suporta). A legenda (`mensagem.body`), se houver, vai junto como texto.
-   - **[INFERENCE]** Os valores `audio`/`ptt`/`image` acima ainda NAO foram confirmados contra um
-     payload real de audio/imagem do WhatsBotMais (so temos o exemplo real de texto, com
-     `mediaType: "conversation"`). Foram inferidos por analogia com o campo `type` do webhook
-     nativo da Meta Cloud API, que o WhatsBotMais empacota para conexoes "API Oficial". Validar com
-     uma mensagem real de audio e de imagem apos o deploy; se os valores reais divergirem, ajustar
-     `_AUDIO_MEDIA_TYPES`/`_IMAGE_MEDIA_TYPES` em `whatsapp_channel.py`.
-   - Outros valores (`video`, `document`, `sticker`, `location`, `vcard`, `contact`, ...) = midia
-     sem pipeline de resposta ainda — o HostHub loga o evento e nao responde.
+   - `mensagem.mediaType == "conversation"` = texto puro (`mensagem.body` = o texto real do
+     cliente). **Confirmado.**
+   - `mensagem.mediaType == "audio"` = audio. **Confirmado** (valor real observado, igual ao
+     inferido). `mensagem.body` vem com o *nome do arquivo*, nao com texto — o texto de fato usado
+     na resposta e a transcricao de `mensagem.mediaUrl` via Whisper.
+   - `mensagem.mediaType == "image"` = imagem. **Confirmado**, mesmo tratamento.
+   - `mensagem.mediaType == "application"` = documento/PDF. **Achado novo, nao estava na doc
+     antiga** (o valor chutado la era `"document"`, que nunca aparece na pratica para uma conexao
+     WhatsBotMais/Baileys). Sem `"application"` em `_UNSUPPORTED_MEDIA_TYPES`, o parser caia no
+     fallback de texto puro usando `mensagem.body` — que para documento e o **nome do arquivo**,
+     nao uma mensagem do cliente — e o pipeline de auto-resposta responderia a um nome de arquivo
+     aleatorio. **Corrigido** em `_UNSUPPORTED_MEDIA_TYPES` (`whatsapp_channel.py`); regressao
+     coberta em `tests/test_whatsapp_channel.py::test_whatsbotmais_document_attachment_does_not_leak_filename_as_text`.
+   - `mensagem.mediaType == "video"` = sem pipeline de resposta. **Confirmado**: nenhuma
+     `ConversationMessage` e criada, o evento so e logado.
    - `fromMe: true` (no nivel raiz OU dentro de `mensagem`) = eco da propria mensagem enviada
      (inclusive pelo proprio HostHub) — nunca responder.
    - Pode chegar embrulhado no formato de item do n8n (`{headers, body, query, ...}`), com o
      payload real dentro de `body`. O parser desembrulha automaticamente.
-2. **TAGS** — `{"action": "tag-sync", "tags": {...}, "contact": {...}}`. Sem chave `mensagem`.
-3. **STATUS DO TICKET** — `{"sender", "acao": "open"|"closed", "ticketData": {...}}`. Sem `mensagem`.
-4. **ARQUIVOS enviados/recebidos** — `{"acao": "fila-data", "mediaFolder", "mediaName", ...}`. Sem
+   - **Achado**: em mensagens de abertura de ticket (`acao: "start"`), `token_origin` pode vir
+     `null` — a primeira mensagem de uma conversa nova nao gera auto-resposta por falta de
+     credencial; mensagens seguintes do mesmo ticket ja vem com `token_origin` preenchido.
+2. **`acao: "queue_webhook"`** — `mensagem` e uma **lista**: `[{"type": "text"|"image"|"audio"|
+   "video"|"document", "text"/"fileUrl", "fileMimeType", "originalData": {...payload cru do
+   WhatsApp/Baileys}}]`. Chega para a mesma mensagem do formato 1, alguns milissegundos antes ou
+   depois. **Ignorado por construcao** (`mensagem` nao e dict) — nao precisa de tratamento
+   especial, mas explica por que cada mensagem real gera 2 linhas em `WebhookEvent`.
+3. **TAGS** — `{"action": "tag-sync", "tags": {...}, "contact": {...}}`. Sem chave `mensagem`.
+4. **STATUS DO TICKET** — `{"sender", "acao": "open"|"closed", "ticketData": {...}}`. Sem
+   `mensagem`. **Confirmado** em producao (`acao: "closed"` observado).
+5. **ARQUIVOS enviados/recebidos** — `{"acao": "fila-data", "mediaFolder", "mediaName", ...}`. Sem
    `mensagem` como objeto com `body`.
 
 O parser (`apps/api/app/services/whatsapp_channel.py::_parse_whatsbotmais_payload`) so reconhece o
-formato 1 (exige `mensagem` como dict com `body` de texto) — os outros 3 sao ignorados por
+formato 1 (exige `mensagem` como dict com `body` de texto) — os outros sao ignorados por
 construcao, sem precisar enumerar `acao`/`event`.
 
 ## Webhook administrativo (fora do escopo do HostHub)

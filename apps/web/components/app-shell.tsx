@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
+  Cable,
   Database,
   FileText,
   History,
@@ -23,9 +24,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { BrandLockup } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
+import { OnboardingTour, type OnboardingStep } from "@/components/onboarding-tour";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiFetch } from "@/lib/api-client";
+import { ONBOARDING_SEEN_PREFIX } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -46,7 +49,8 @@ const NAV: Record<Section, NavItem[]> = {
   ],
   app: [
     { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/app/prompt", label: "Prompt", icon: MessageSquare },
+    { href: "/app/prompt", label: "Agente de IA", icon: MessageSquare },
+    { href: "/app/conexao", label: "Conexao", icon: Cable },
     { href: "/app/prompt/templates", label: "Templates", icon: LayoutTemplate },
     { href: "/app/prompt/dados-coletados", label: "Dados coletados", icon: Database },
     { href: "/app/prompt/historico", label: "Historico", icon: History },
@@ -60,6 +64,92 @@ const NAV: Record<Section, NavItem[]> = {
 const SECTION_LABEL: Record<Section, string> = {
   admin: "Painel administrativo",
   app: "Painel do cliente",
+};
+
+/** One onboarding step per nav item, targeted via the `data-tour` attribute set on each link
+ * below. Shown automatically the first time a user reaches a section (tracked in localStorage
+ * per section, see `ONBOARDING_SEEN_PREFIX`) and replayable anytime via the "Tour guiado"
+ * button in the sidebar footer. */
+const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
+  admin: [
+    {
+      target: '[data-tour="/admin"]',
+      title: "Visao geral",
+      description: "Resumo de tudo que importa: instancias, prompts pendentes e conversas aguardando humano.",
+    },
+    {
+      target: '[data-tour="/admin/instances"]',
+      title: "Instancias",
+      description: "Crie, configure e acompanhe as instancias de WhatsApp de cada cliente.",
+    },
+    {
+      target: '[data-tour="/admin/templates"]',
+      title: "Templates",
+      description: "Modelos de prompt prontos para usar como ponto de partida em novas instancias.",
+    },
+    {
+      target: '[data-tour="/admin/theme"]',
+      title: "Tema",
+      description: "Personalize as cores e a identidade visual do painel.",
+    },
+    {
+      target: '[data-tour="/admin/ai-settings"]',
+      title: "IA",
+      description: "Configuracoes gerais de inteligencia artificial da plataforma.",
+    },
+  ],
+  app: [
+    {
+      target: '[data-tour="/app"]',
+      title: "Dashboard",
+      description: "Visao geral da sua instancia: conversas, prompts pendentes e metricas.",
+    },
+    {
+      target: '[data-tour="/app/prompt"]',
+      title: "Agente de IA",
+      description: "Configure a identidade, o tom e o conhecimento do seu agente de IA.",
+    },
+    {
+      target: '[data-tour="/app/conexao"]',
+      title: "Conexao",
+      description: "Conecte o WhatsApp da instancia via WhatsBotMais, Evolution API ou API Oficial da Meta.",
+    },
+    {
+      target: '[data-tour="/app/prompt/templates"]',
+      title: "Templates",
+      description: "Escolha um modelo pronto para comecar a configurar seu agente mais rapido.",
+    },
+    {
+      target: '[data-tour="/app/prompt/dados-coletados"]',
+      title: "Dados coletados",
+      description: "Veja o que a IA aprendeu automaticamente com as conversas dos clientes.",
+    },
+    {
+      target: '[data-tour="/app/prompt/historico"]',
+      title: "Historico",
+      description: "Consulte e compare versoes anteriores do prompt.",
+    },
+    {
+      target: '[data-tour="/app/conversations"]',
+      title: "Conversas",
+      description: "Acompanhe as conversas do WhatsApp em tempo real.",
+    },
+    {
+      target: '[data-tour="/app/campaigns"]',
+      title: "Campanhas",
+      description: "Envie mensagens em massa para os contatos da sua instancia.",
+    },
+    {
+      target: '[data-tour="/app/webhook"]',
+      title: "Webhook",
+      description: "Integre eventos da plataforma com seus proprios sistemas.",
+    },
+    {
+      target: '[data-tour="/app/equipe"]',
+      title: "Equipe",
+      description: "Gerencie quem tem acesso a esta instancia.",
+    },
+  ],
 };
 
 /** Longest matching nav href wins, so nested routes (e.g. /app/prompt/templates) don't
@@ -86,6 +176,21 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const items = NAV[section];
   const active = useMemo(() => activeHref(pathname, items), [pathname, items]);
+  const tourSteps = TOUR_STEPS[section];
+  const [tourActive, setTourActive] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem(`${ONBOARDING_SEEN_PREFIX}${section}`)) {
+      setTourStep(0);
+      setTourActive(true);
+    }
+  }, [section]);
+
+  function closeTour() {
+    setTourActive(false);
+    window.localStorage.setItem(`${ONBOARDING_SEEN_PREFIX}${section}`, "1");
+  }
 
   async function handleLogout() {
     await apiFetch("/auth/logout", { method: "POST" }).catch(() => null);
@@ -106,6 +211,7 @@ export function AppShell({
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.href}
               onClick={() => setOpen(false)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
@@ -165,6 +271,17 @@ export function AppShell({
         {topBar}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
+
+      {tourActive ? (
+        <OnboardingTour
+          steps={tourSteps}
+          stepIndex={tourStep}
+          onNext={() => setTourStep((s) => Math.min(tourSteps.length - 1, s + 1))}
+          onPrev={() => setTourStep((s) => Math.max(0, s - 1))}
+          onSkip={closeTour}
+          onFinish={closeTour}
+        />
+      ) : null}
     </div>
   );
 }

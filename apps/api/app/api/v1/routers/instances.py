@@ -50,6 +50,8 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
         auto_gen_conversation_threshold=instance.auto_gen_conversation_threshold,
         auto_gen_interval=instance.auto_gen_interval,
         last_auto_gen_at=instance.last_auto_gen_at,
+        whatsapp_provider=instance.whatsapp_provider,
+        meta_phone_number_id=instance.meta_phone_number_id,
     )
 
 

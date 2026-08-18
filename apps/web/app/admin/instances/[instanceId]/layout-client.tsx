@@ -14,7 +14,8 @@ import { StatusBadge } from "../status-badge";
 const TABS = [
   { href: "", label: "Geral" },
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/prompt", label: "Prompt" },
+  { href: "/prompt", label: "Agente de IA" },
+  { href: "/conexao", label: "Conexao" },
   { href: "/prompt/dados-coletados", label: "Dados coletados" },
   { href: "/prompt/historico", label: "Historico" },
   { href: "/conversations", label: "Conversas" },

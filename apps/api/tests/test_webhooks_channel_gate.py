@@ -15,7 +15,13 @@ from app.services.whatsapp_channel import ParsedInboundMessage
 
 
 def _instance(status=InstanceStatus.ACTIVE, whatsapp_instance_name=None):
-    return SimpleNamespace(status=status, whatsapp_instance_name=whatsapp_instance_name)
+    return SimpleNamespace(
+        status=status,
+        whatsapp_instance_name=whatsapp_instance_name,
+        whatsapp_provider=None,
+        meta_phone_number_id=None,
+        meta_access_token=None,
+    )
 
 
 def _parsed(whatsbotmais_token=None):

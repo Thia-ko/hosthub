@@ -21,7 +21,15 @@ def _instance(**overrides) -> SimpleNamespace:
 
 
 def _empty_data() -> dict:
-    return {"business_info": [], "products": [], "policies": [], "faqs": [], "patterns": [], "traits": []}
+    return {
+        "business_info": [],
+        "products": [],
+        "policies": [],
+        "faqs": [],
+        "patterns": [],
+        "traits": [],
+        "knowledge_files": [],
+    }
 
 
 # --- _format_collected_data ---------------------------------------------------------------------

@@ -34,6 +34,12 @@ ESCALATION_SUFFIX = (
     "humano vai continuar o atendimento. So use essa tag quando realmente necessario."
 )
 
+KNOWLEDGE_IMAGE_SYSTEM_PROMPT = (
+    "Voce descreve imagens de forma objetiva e detalhada para servir de material de referencia "
+    "para um agente de atendimento ao cliente. Descreva o conteudo relevante da imagem (produto, "
+    "texto visivel, contexto) em portugues, em ate 3 paragrafos curtos."
+)
+
 
 class AiAssistProvider(ABC):
     @property
@@ -56,6 +62,16 @@ class AiAssistProvider(ABC):
     @abstractmethod
     async def transcribe(self, audio_url: str) -> str:
         """Downloads the audio at `audio_url` and returns its transcribed text."""
+
+    @abstractmethod
+    async def transcribe_bytes(self, content: bytes, filename: str, content_type: str) -> str:
+        """Transcribes raw audio bytes directly (no download step) and returns the text."""
+
+    @abstractmethod
+    async def describe_image(self, image_data_url: str) -> tuple[str, int, int]:
+        """Describes an image (data URL) in pt-BR for use as knowledge-base reference material.
+        Returns (description, prompt_tokens, completion_tokens)."""
+
 
     @abstractmethod
     async def extract_json(self, system_prompt: str, user_content: str, temperature: float = 0.2) -> tuple[dict, int, int]:
@@ -121,13 +137,15 @@ class OpenAiCompatibleProvider(AiAssistProvider):
 
         filename = audio_url.rsplit("/", 1)[-1].split("?", 1)[0] or "audio.ogg"
         content_type = audio_response.headers.get("content-type", "application/octet-stream")
+        return await self.transcribe_bytes(audio_response.content, filename, content_type)
 
+    async def transcribe_bytes(self, content: bytes, filename: str, content_type: str) -> str:
         async with httpx.AsyncClient(base_url=self._base_url, timeout=60) as client:
             response = await client.post(
                 "/audio/transcriptions",
                 headers={"Authorization": f"Bearer {self._api_key}"},
                 data={"model": self._transcribe_model},
-                files={"file": (filename, audio_response.content, content_type)},
+                files={"file": (filename, content, content_type)},
             )
             response.raise_for_status()
             data = response.json()
@@ -136,6 +154,17 @@ class OpenAiCompatibleProvider(AiAssistProvider):
         if not isinstance(text, str) or not text.strip():
             raise ValueError("Transcricao de audio veio vazia")
         return text.strip()
+
+    async def describe_image(self, image_data_url: str) -> tuple[str, int, int]:
+        return await self._chat_completion(
+            [
+                {"role": "system", "content": KNOWLEDGE_IMAGE_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [{"type": "image_url", "image_url": {"url": image_data_url}}],
+                },
+            ]
+        )
 
     async def extract_json(
         self, system_prompt: str, user_content: str, temperature: float = 0.2

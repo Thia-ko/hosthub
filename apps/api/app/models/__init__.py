@@ -8,7 +8,13 @@ from app.models.conversation_message import ConversationMessage, MessageDirectio
 from app.models.conversation_thread import ConversationThread
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
-from app.models.instance import Instance, InstanceStatus
+from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
+from app.models.instance_knowledge_file import (
+    InstanceKnowledgeFile,
+    KnowledgeFileKind,
+    KnowledgeFileStatus,
+    KnowledgeFileUsageMode,
+)
 from app.models.instance_member import InstanceMember, InstanceMemberRole
 from app.models.outbound_webhook_subscription import OutboundWebhookSubscription
 from app.models.prompt_template import PromptTemplate
@@ -23,6 +29,7 @@ __all__ = [
     "UserRole",
     "Instance",
     "InstanceStatus",
+    "WhatsAppProvider",
     "PromptVersion",
     "PromptVersionSource",
     "AiAssistRequest",
@@ -47,4 +54,8 @@ __all__ = [
     "CampaignStatus",
     "CampaignRecipient",
     "CampaignRecipientStatus",
+    "InstanceKnowledgeFile",
+    "KnowledgeFileKind",
+    "KnowledgeFileStatus",
+    "KnowledgeFileUsageMode",
 ]

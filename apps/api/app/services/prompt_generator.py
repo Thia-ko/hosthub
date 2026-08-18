@@ -1,16 +1,18 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select, update
 
 from app.models.attendant_pattern import AttendantPattern
 from app.models.conversation_analysis import ConversationAnalysis
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
 from app.models.instance import Instance
+from app.models.instance_knowledge_file import InstanceKnowledgeFile, KnowledgeFileStatus, KnowledgeFileUsageMode
 from app.models.prompt_version import PromptVersion, PromptVersionSource
 from app.services.ai_assist_provider import OpenAiCompatibleProvider
 from app.services.ai_settings import get_effective_ai_settings
+from app.services.knowledge_files import build_knowledge_section
 from app.services.outbound_webhooks import PROMPT_PENDING, dispatch_event
 from app.utils.json_utils import safe_parse_json_array
 
@@ -45,6 +47,20 @@ async def _collect_instance_data(db, instance_id) -> dict:
         .where(AttendantPattern.instance_id == instance_id, AttendantPattern.pattern_type == "personality_trait")
         .order_by(AttendantPattern.frequency.desc())
     )
+    knowledge_files_result = await db.execute(
+        select(InstanceKnowledgeFile).where(
+            InstanceKnowledgeFile.instance_id == instance_id,
+            InstanceKnowledgeFile.status != KnowledgeFileStatus.PROCESSING_FAILED,
+            InstanceKnowledgeFile.content_text.isnot(None),
+            or_(
+                InstanceKnowledgeFile.usage_mode == KnowledgeFileUsageMode.AUTO,
+                and_(
+                    InstanceKnowledgeFile.usage_mode == KnowledgeFileUsageMode.MANUAL,
+                    InstanceKnowledgeFile.include_next.is_(True),
+                ),
+            ),
+        )
+    )
 
     return {
         "business_info": await _extracted("business_info"),
@@ -53,6 +69,7 @@ async def _collect_instance_data(db, instance_id) -> dict:
         "faqs": list(faqs_result.scalars().all()),
         "patterns": list(patterns_result.scalars().all()),
         "traits": list(traits_result.scalars().all()),
+        "knowledge_files": list(knowledge_files_result.scalars().all()),
     }
 
 
@@ -71,8 +88,10 @@ def _format_collected_data(data: dict) -> str:
 
     fmt_patterns = "\n".join(fmt_pattern(p) for p in data["patterns"]) or "(sem padroes ainda)"
     fmt_traits = "\n".join(f"- {trait.description}" for trait in data["traits"]) or "(sem tracos ainda)"
+    knowledge_section = build_knowledge_section(data["knowledge_files"])
 
-    return f"""## Informacoes do Negocio
+    return (
+        f"""## Informacoes do Negocio
 {fmt(data["business_info"])}
 
 ## Produtos e Servicos
@@ -89,6 +108,8 @@ def _format_collected_data(data: dict) -> str:
 
 ## Tracos de Personalidade
 {fmt_traits}"""
+        + (f"\n\n{knowledge_section}" if knowledge_section else "")
+    )
 
 
 def _build_full_generation_prompt(data_block: str) -> str:
@@ -275,6 +296,20 @@ async def generate_prompt_from_data(db, instance: Instance) -> PromptVersion | N
     await dispatch_event(
         instance.id, PROMPT_PENDING, {"prompt_version_id": str(version.id), "version_number": version.version_number}
     )
+
+    # One-shot "caso singular" semantics: a MANUAL knowledge file flagged for this generation
+    # reverts to not-included until explicitly flagged again.
+    await db.execute(
+        update(InstanceKnowledgeFile)
+        .where(
+            InstanceKnowledgeFile.instance_id == instance.id,
+            InstanceKnowledgeFile.usage_mode == KnowledgeFileUsageMode.MANUAL,
+            InstanceKnowledgeFile.include_next.is_(True),
+        )
+        .values(include_next=False)
+    )
+    await db.commit()
+
     return version
 
 

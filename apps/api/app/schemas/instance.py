@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.instance import InstanceStatus
+from app.models.instance import InstanceStatus, WhatsAppProvider
 
 
 class InstanceOut(BaseModel):
@@ -22,6 +22,8 @@ class InstanceDetailOut(InstanceOut):
     ai_assist_daily_token_limit: int | None
     webhook_token: str
     whatsapp_instance_name: str | None
+    whatsapp_provider: WhatsAppProvider | None
+    meta_phone_number_id: str | None
     auto_generate_prompt: bool
     auto_gen_conversation_threshold: int
     auto_gen_interval: str
@@ -46,6 +48,7 @@ class InstanceUpdateRequest(BaseModel):
     status: InstanceStatus | None = None
     ai_assist_daily_token_limit: int | None = None
     whatsapp_instance_name: str | None = None
+    whatsapp_provider: WhatsAppProvider | None = None
     auto_generate_prompt: bool | None = None
     auto_gen_conversation_threshold: int | None = None
     auto_gen_interval: str | None = None

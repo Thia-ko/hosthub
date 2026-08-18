@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,7 @@ from app.db.session import get_db
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
 from app.models.conversation_thread import ConversationThread
-from app.models.instance import Instance, InstanceStatus
+from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
 from app.models.prompt_version import PromptVersion
 from app.models.satisfaction_response import SatisfactionResponse
 from app.models.webhook_event import WebhookEvent
@@ -116,6 +117,8 @@ def _channel_is_ready(instance: Instance, parsed: ParsedInboundMessage) -> bool:
     WhatsBotMais-only instance even with a valid prompt configured."""
     if instance.status != InstanceStatus.ACTIVE:
         return False
+    if instance.whatsapp_provider == WhatsAppProvider.META_CLOUD and instance.meta_phone_number_id and instance.meta_access_token:
+        return True
     return bool(instance.whatsapp_instance_name or parsed.whatsbotmais_token)
 
 
@@ -264,6 +267,23 @@ async def receive_webhook(
         background_tasks.add_task(maybe_trigger_analysis, instance.id, parsed.sender_number)
 
     return {"received": True}
+
+
+@router.get("/{webhook_token}", dependencies=[Depends(rate_limit_webhook_token)])
+async def verify_webhook(
+    webhook_token: str,
+    request: Request,
+    instance: Instance = Depends(get_instance_by_webhook_token),
+) -> Response:
+    """Meta WhatsApp Cloud API's webhook verification handshake: Meta issues a GET with these
+    query params (to the same URL used for inbound POSTs) when a webhook is first registered
+    (or re-verified) in the Meta App dashboard, and expects the raw challenge echoed back."""
+    mode = request.query_params.get("hub.mode")
+    verify_token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+    if mode == "subscribe" and verify_token == instance.webhook_token and challenge is not None:
+        return PlainTextResponse(challenge)
+    raise HTTPException(status_code=403, detail="Falha na verificacao do webhook")
 
 
 @router.get(

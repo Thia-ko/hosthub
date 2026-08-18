@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     WHATSBOTMAIS_API_BASE_URL: str = "https://api2.whatsbotmais.com.br"
 
+    META_CLOUD_API_VERSION: str = "v23.0"
+
     TURNSTILE_SECRET_KEY: str = ""
     CF_ACCESS_TEAM_DOMAIN: str = ""
 
