@@ -1,4 +1,5 @@
 import json
+import secrets
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,6 +26,7 @@ def _out(sub: OutboundWebhookSubscription) -> OutboundWebhookSubscriptionOut:
         id=sub.id,
         url=sub.url,
         events=safe_parse_json_array(sub.events),
+        secret=sub.secret,
         active=sub.active,
         created_at=sub.created_at,
     )
@@ -109,3 +111,18 @@ async def delete_subscription(
     await db.delete(sub)
     await db.commit()
     return {"deleted": True}
+
+
+@router.post("/{sub_id}/regenerate-secret", response_model=OutboundWebhookSubscriptionOut)
+async def regenerate_secret(
+    sub_id: uuid.UUID,
+    instance: Instance = Depends(get_owned_instance),
+    db: AsyncSession = Depends(get_db),
+) -> OutboundWebhookSubscriptionOut:
+    """Rotates the HMAC signing secret - the old one stops validating immediately, so the
+    receiver's verification code must be updated with the new secret before/at the same time."""
+    sub = await _get_subscription(db, instance, sub_id)
+    sub.secret = secrets.token_urlsafe(32)
+    await db.commit()
+    await db.refresh(sub)
+    return _out(sub)

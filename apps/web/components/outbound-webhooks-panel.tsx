@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Webhook } from "lucide-react";
+import { Plus, RotateCw, Trash2, Webhook } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/state";
 import { GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
+import { copyToClipboard } from "@/lib/utils";
 import { useAsyncData } from "@/lib/use-async-data";
 import type { OutboundWebhookEvent, OutboundWebhookSubscription } from "@/lib/types";
 
@@ -25,11 +26,21 @@ function SubscriptionRow({
   subscription,
   onToggleActive,
   onDelete,
+  onRegenerateSecret,
 }: {
   subscription: OutboundWebhookSubscription;
   onToggleActive: (id: string, active: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onRegenerateSecret: (id: string) => Promise<void>;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copySecret() {
+    if (!(await copyToClipboard(subscription.secret))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div className="flex items-start justify-between gap-2 rounded-md border px-3 py-2 text-sm">
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -46,6 +57,13 @@ function SubscriptionRow({
             </Badge>
           ) : null}
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Segredo (HMAC-SHA256):</span>
+          <code className="truncate rounded bg-muted/40 px-1.5 py-0.5 text-xs">{subscription.secret}</code>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={copySecret}>
+            {copied ? "Copiado" : "Copiar"}
+          </Button>
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button
@@ -55,6 +73,18 @@ function SubscriptionRow({
         >
           {subscription.active ? "Desativar" : "Ativar"}
         </Button>
+        <ConfirmDialog
+          trigger={
+            <Button size="icon" variant="ghost" className="size-7 shrink-0" title="Gerar novo segredo">
+              <RotateCw className="size-3.5" />
+            </Button>
+          }
+          title="Gerar novo segredo"
+          description="O segredo atual para de validar assinaturas imediatamente. Atualize a verificacao no seu receptor antes de sair desta tela."
+          confirmLabel="Gerar novo segredo"
+          destructive
+          onConfirm={() => onRegenerateSecret(subscription.id)}
+        />
         <ConfirmDialog
           trigger={
             <Button size="icon" variant="ghost" className="size-7 shrink-0">
@@ -178,13 +208,20 @@ export function OutboundWebhooksPanel({ instanceId }: { instanceId: string }) {
     reload();
   }
 
+  async function regenerateSecret(id: string) {
+    await apiFetch(`/instances/${instanceId}/outbound-webhooks/${id}/regenerate-secret`, { method: "POST" });
+    reload();
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <p className="text-sm font-medium">Integracoes de saida</p>
         <p className="text-xs text-muted-foreground">
           Notifica um endpoint externo (n8n, Zapier, CRM) via POST em JSON quando um dos eventos abaixo
-          acontece nesta instancia.
+          acontece nesta instancia, assinado com HMAC-SHA256 (header{" "}
+          <code className="text-xs">X-HostHub-Signature-256</code>) usando o segredo de cada integracao - confira a
+          assinatura antes de confiar no payload.
         </p>
       </div>
       {loading ? <LoadingState /> : null}
@@ -200,6 +237,7 @@ export function OutboundWebhooksPanel({ instanceId }: { instanceId: string }) {
               subscription={subscription}
               onToggleActive={toggleActive}
               onDelete={deleteSubscription}
+              onRegenerateSecret={regenerateSecret}
             />
           ))}
         </div>

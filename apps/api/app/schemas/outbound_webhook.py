@@ -8,6 +8,7 @@ class OutboundWebhookSubscriptionOut(BaseModel):
     id: uuid.UUID
     url: str
     events: list[str]
+    secret: str
     active: bool
     created_at: datetime
 

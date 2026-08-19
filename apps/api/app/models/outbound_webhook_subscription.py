@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime
 
@@ -12,7 +13,14 @@ class OutboundWebhookSubscription(Base):
     """A URL (n8n/Zapier/CRM) the instance owner wants notified when platform events happen.
     `events` is a JSON-encoded array of event names from app.services.outbound_webhooks.EVENTS -
     same storage convention as AttendantPattern.examples. Delivery is best-effort, single
-    attempt, fire-and-forget: see app.services.outbound_webhooks.dispatch_event."""
+    attempt, fire-and-forget: see app.services.outbound_webhooks.dispatch_event.
+
+    `secret` signs every delivery (HMAC-SHA256 over the raw request body, see dispatch_event) so
+    the receiver can verify a payload actually came from HostHub and wasn't forged by whoever
+    guesses the URL - same role as a Stripe/GitHub webhook signing secret. Unlike an ApiKey's
+    raw key, it's not a one-time secret: the owner needs to keep reading it to configure their
+    receiver, so it stays visible in OutboundWebhookSubscriptionOut and can be rotated via the
+    regenerate-secret endpoint instead of being create-only."""
 
     __tablename__ = "outbound_webhook_subscriptions"
 
@@ -20,6 +28,7 @@ class OutboundWebhookSubscription(Base):
     instance_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("instances.id"), nullable=False)
     url: Mapped[str] = mapped_column(String, nullable=False)
     events: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    secret: Mapped[str] = mapped_column(String, nullable=False, default=lambda: secrets.token_urlsafe(32))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

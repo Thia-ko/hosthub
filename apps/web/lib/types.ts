@@ -56,6 +56,7 @@ export interface OutboundWebhookSubscription {
   id: string;
   url: string;
   events: OutboundWebhookEvent[];
+  secret: string;
   active: boolean;
   created_at: string;
 }

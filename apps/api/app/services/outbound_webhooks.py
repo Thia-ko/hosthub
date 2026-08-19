@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 import logging
 import uuid
 
@@ -19,13 +22,22 @@ PROMPT_PENDING = "prompt_pending"
 
 EVENTS = (MESSAGE_RECEIVED, THREAD_ESCALATED, PROMPT_PENDING)
 
+SIGNATURE_HEADER = "X-HostHub-Signature-256"
+
 _TIMEOUT_SECONDS = 10
+
+
+def sign_payload(secret: str, payload_bytes: bytes) -> str:
+    """HMAC-SHA256 of the exact bytes sent, hex-encoded and prefixed like GitHub/Stripe webhook
+    signatures (`sha256=<hex>`) so receivers can reuse an existing verification snippet."""
+    digest = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
 
 
 async def dispatch_event(instance_id: uuid.UUID, event: str, payload: dict) -> None:
     """Fire-and-forget: POSTs `payload` to every active subscription for `instance_id` that
-    listens to `event`. Best-effort, single attempt, no retry/backoff - never raises, one
-    subscriber's outage never affects another or the caller."""
+    listens to `event`, signed with that subscription's secret. Best-effort, single attempt, no
+    retry/backoff - never raises, one subscriber's outage never affects another or the caller."""
     async with async_session() as db:
         result = await db.execute(
             select(OutboundWebhookSubscription).where(
@@ -41,10 +53,21 @@ async def dispatch_event(instance_id: uuid.UUID, event: str, payload: dict) -> N
         return
 
     body = {"event": event, "instance_id": str(instance_id), **payload}
+    # Serialized once, sent as raw bytes (not httpx's `json=`) so the signature is computed over
+    # the exact same bytes that go over the wire - httpx re-serializing internally could produce
+    # different bytes (key order, spacing) than what was signed.
+    payload_bytes = json.dumps(body).encode("utf-8")
     async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
         for sub in subscriptions:
             try:
-                response = await client.post(sub.url, json=body)
+                response = await client.post(
+                    sub.url,
+                    content=payload_bytes,
+                    headers={
+                        "Content-Type": "application/json",
+                        SIGNATURE_HEADER: sign_payload(sub.secret, payload_bytes),
+                    },
+                )
                 response.raise_for_status()
             except httpx.HTTPError:
                 logger.exception(
