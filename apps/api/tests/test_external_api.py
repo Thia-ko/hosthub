@@ -22,7 +22,7 @@ from app.models.conversation_message import ConversationMessage, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
-from app.models.instance import Instance, InstanceStatus
+from app.models.instance import Instance, InstanceStatus, Plan
 from app.models.user import User, UserRole
 from app.schemas.api_key import ApiKeyCreateRequest
 from app.schemas.external import ExternalSendMessageRequest
@@ -53,6 +53,7 @@ async def instance():
             created_by_admin_id=owner.id,
             status=InstanceStatus.ACTIVE,
             whatsapp_instance_name="evo-connection",
+            plan=Plan.ENTERPRISE,  # this suite tests the external API itself, not plan gating
         )
         db.add(inst)
         await db.commit()

@@ -23,6 +23,7 @@ from app.services.conversation_threads import get_or_create_thread
 from app.services.csat import CSAT_THANKS_MESSAGE, parse_rating
 from app.services.escalation import customer_requests_handoff, split_escalation_tag
 from app.services.outbound_webhooks import MESSAGE_RECEIVED, THREAD_ESCALATED, dispatch_event
+from app.services.plans import get_features
 from app.services.prompt_content import get_current_prompt_content, get_current_prompt_version
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
@@ -138,6 +139,10 @@ async def _maybe_auto_reply(
         # human should hand off even if the AI isn't configured or the daily budget is spent.
         if parsed.media_kind != "audio" and customer_requests_handoff(parsed.text):
             await _handoff_to_human(db, instance, parsed, thread)
+            return
+
+        if not get_features(instance).ai_enabled:
+            logger.info("Instance %s has AI disabled for its plan; skipping auto-reply", instance.id)
             return
 
         used_today = await get_usage_today(db, instance.id)

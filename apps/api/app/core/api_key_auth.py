@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.api_key import ApiKey
 from app.models.instance import Instance, InstanceStatus
 from app.services.api_keys import hash_api_key
+from app.services.plans import get_features
 from app.utils.json_utils import safe_parse_json_array
 
 _UNAUTHORIZED = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key ausente ou invalida")
@@ -46,6 +47,12 @@ def require_scope(scope: str):
         instance = await db.get(Instance, api_key.instance_id)
         if instance is None or instance.status != InstanceStatus.ACTIVE:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instancia nao encontrada ou inativa")
+        if not get_features(instance).api_access_enabled:
+            # Plan-level gate, independent of the key's own scopes: a downgraded instance's
+            # existing keys stop working immediately, not just new key creation.
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="O plano desta instancia nao inclui acesso a API"
+            )
         api_key.last_used_at = datetime.now(timezone.utc)
         await db.commit()
         return instance

@@ -1,4 +1,5 @@
 export type InstanceStatus = "active" | "paused" | "archived";
+export type Plan = "starter" | "pro" | "enterprise";
 
 export interface Instance {
   id: string;
@@ -18,6 +19,13 @@ export interface InstanceDetail extends Instance {
   auto_gen_conversation_threshold: number;
   auto_gen_interval: "off" | "1d" | "3d" | "1w";
   last_auto_gen_at: string | null;
+  plan: Plan;
+  ai_enabled_override: boolean | null;
+  campaigns_enabled_override: boolean | null;
+  api_access_enabled_override: boolean | null;
+  ai_enabled: boolean;
+  campaigns_enabled: boolean;
+  api_access_enabled: boolean;
 }
 
 export type InstanceMemberRole = "owner" | "member";

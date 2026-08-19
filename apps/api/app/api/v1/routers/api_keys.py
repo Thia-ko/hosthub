@@ -13,6 +13,7 @@ from app.models.instance import Instance
 from app.models.user import User
 from app.schemas.api_key import ApiKeyCreatedOut, ApiKeyCreateRequest, ApiKeyOut
 from app.services.api_keys import SCOPES, generate_api_key
+from app.services.plans import get_features
 from app.utils.json_utils import safe_parse_json_array
 
 router = APIRouter(prefix="/instances/{instance_id}/api-keys", tags=["api-keys"])
@@ -60,6 +61,10 @@ async def create_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ApiKeyCreatedOut:
+    if not get_features(instance).api_access_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="O plano desta instancia nao inclui acesso a API"
+        )
     _validate_scopes(payload.scopes)
     raw_key, prefix, key_hash = generate_api_key()
     key = ApiKey(

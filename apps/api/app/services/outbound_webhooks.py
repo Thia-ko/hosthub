@@ -8,7 +8,9 @@ import httpx
 from sqlalchemy import select
 
 from app.db.session import async_session
+from app.models.instance import Instance
 from app.models.outbound_webhook_subscription import OutboundWebhookSubscription
+from app.services.plans import get_features
 from app.utils.json_utils import safe_parse_json_array
 
 logger = logging.getLogger(__name__)
@@ -39,6 +41,11 @@ async def dispatch_event(instance_id: uuid.UUID, event: str, payload: dict) -> N
     listens to `event`, signed with that subscription's secret. Best-effort, single attempt, no
     retry/backoff - never raises, one subscriber's outage never affects another or the caller."""
     async with async_session() as db:
+        instance = await db.get(Instance, instance_id)
+        if instance is None or not get_features(instance).api_access_enabled:
+            # Plan-level gate: a downgraded instance's existing subscriptions go inert instead
+            # of continuing to deliver for a feature it no longer pays for.
+            return
         result = await db.execute(
             select(OutboundWebhookSubscription).where(
                 OutboundWebhookSubscription.instance_id == instance_id,

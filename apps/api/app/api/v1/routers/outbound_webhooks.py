@@ -16,6 +16,7 @@ from app.schemas.outbound_webhook import (
     OutboundWebhookSubscriptionUpdateRequest,
 )
 from app.services.outbound_webhooks import EVENTS
+from app.services.plans import get_features
 from app.utils.json_utils import safe_parse_json_array
 
 router = APIRouter(prefix="/instances/{instance_id}/outbound-webhooks", tags=["outbound-webhooks"])
@@ -59,6 +60,10 @@ async def create_subscription(
     instance: Instance = Depends(get_owned_instance),
     db: AsyncSession = Depends(get_db),
 ) -> OutboundWebhookSubscriptionOut:
+    if not get_features(instance).api_access_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="O plano desta instancia nao inclui acesso a API"
+        )
     _validate_events(payload.events)
     sub = OutboundWebhookSubscription(
         instance_id=instance.id, url=payload.url, events=json.dumps(payload.events)

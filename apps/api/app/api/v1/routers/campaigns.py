@@ -11,6 +11,7 @@ from app.models.instance import Instance
 from app.models.user import User
 from app.schemas.campaign import CampaignCreateRequest, CampaignOut
 from app.services.campaigns import send_campaign
+from app.services.plans import get_features
 
 router = APIRouter(prefix="/instances/{instance_id}/campaigns", tags=["campaigns"])
 
@@ -50,6 +51,10 @@ async def create_campaign(
     """Creates the campaign and immediately queues it for sending in the background - see
     app.services.campaigns.send_campaign. Recipients outside the 24h WhatsApp window are
     skipped automatically, never blocked on here."""
+    if not get_features(instance).campaigns_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="O plano desta instancia nao inclui campanhas"
+        )
     campaign = Campaign(
         instance_id=instance.id, name=payload.name, message=payload.message, created_by_user_id=user.id
     )

@@ -19,6 +19,7 @@ from app.schemas.instance import (
     InstanceOut,
     InstanceUpdateRequest,
 )
+from app.services.plans import get_features
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 
@@ -35,6 +36,7 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
     if owner_email is None:
         owner = await db.get(User, instance.owner_user_id)
         owner_email = owner.email if owner else ""
+    features = get_features(instance)
     return InstanceDetailOut(
         id=instance.id,
         name=instance.name,
@@ -52,6 +54,13 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
         last_auto_gen_at=instance.last_auto_gen_at,
         whatsapp_provider=instance.whatsapp_provider,
         meta_phone_number_id=instance.meta_phone_number_id,
+        plan=instance.plan,
+        ai_enabled_override=instance.ai_enabled_override,
+        campaigns_enabled_override=instance.campaigns_enabled_override,
+        api_access_enabled_override=instance.api_access_enabled_override,
+        ai_enabled=features.ai_enabled,
+        campaigns_enabled=features.campaigns_enabled,
+        api_access_enabled=features.api_access_enabled,
     )
 
 
@@ -149,6 +158,20 @@ async def update_instance(
         instance.auto_gen_conversation_threshold = payload.auto_gen_conversation_threshold
     if payload.auto_gen_interval is not None:
         instance.auto_gen_interval = payload.auto_gen_interval
+    if payload.plan is not None:
+        instance.plan = payload.plan
+    if payload.clear_ai_enabled_override:
+        instance.ai_enabled_override = None
+    elif payload.ai_enabled_override is not None:
+        instance.ai_enabled_override = payload.ai_enabled_override
+    if payload.clear_campaigns_enabled_override:
+        instance.campaigns_enabled_override = None
+    elif payload.campaigns_enabled_override is not None:
+        instance.campaigns_enabled_override = payload.campaigns_enabled_override
+    if payload.clear_api_access_enabled_override:
+        instance.api_access_enabled_override = None
+    elif payload.api_access_enabled_override is not None:
+        instance.api_access_enabled_override = payload.api_access_enabled_override
     await db.commit()
     await db.refresh(instance)
     return await _detail_out(db, instance)

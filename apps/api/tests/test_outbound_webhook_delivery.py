@@ -11,7 +11,7 @@ import pytest
 
 from app.api.v1.routers import outbound_webhooks as outbound_webhooks_router
 from app.db.session import async_session
-from app.models.instance import Instance, InstanceStatus
+from app.models.instance import Instance, InstanceStatus, Plan
 from app.models.outbound_webhook_subscription import OutboundWebhookSubscription
 from app.models.user import User, UserRole
 from app.services.outbound_webhooks import (
@@ -38,6 +38,7 @@ async def instance():
             owner_user_id=owner.id,
             created_by_admin_id=owner.id,
             status=InstanceStatus.ACTIVE,
+            plan=Plan.ENTERPRISE,  # this suite tests delivery/signing itself, not plan gating
         )
         db.add(inst)
         await db.commit()

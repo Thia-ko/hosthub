@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.instance import InstanceStatus, WhatsAppProvider
+from app.models.instance import InstanceStatus, Plan, WhatsAppProvider
 
 
 class InstanceOut(BaseModel):
@@ -28,6 +28,15 @@ class InstanceDetailOut(InstanceOut):
     auto_gen_conversation_threshold: int
     auto_gen_interval: str
     last_auto_gen_at: datetime | None
+    plan: Plan
+    ai_enabled_override: bool | None
+    campaigns_enabled_override: bool | None
+    api_access_enabled_override: bool | None
+    # Effective values (override if set, else the plan's default) - see
+    # app.services.plans.get_features. Saves the frontend from reimplementing the resolution.
+    ai_enabled: bool
+    campaigns_enabled: bool
+    api_access_enabled: bool
 
 
 class InstanceCreateRequest(BaseModel):
@@ -52,6 +61,16 @@ class InstanceUpdateRequest(BaseModel):
     auto_generate_prompt: bool | None = None
     auto_gen_conversation_threshold: int | None = None
     auto_gen_interval: str | None = None
+    plan: Plan | None = None
+    # Explicit true/false sets the override; omitted (None) leaves it untouched. The `clear_*`
+    # flags revert to inheriting the plan's default - same optional-clear convention as
+    # AiSettingsUpdateRequest.clear_api_key.
+    ai_enabled_override: bool | None = None
+    clear_ai_enabled_override: bool = False
+    campaigns_enabled_override: bool | None = None
+    clear_campaigns_enabled_override: bool = False
+    api_access_enabled_override: bool | None = None
+    clear_api_access_enabled_override: bool = False
 
 
 class ClientPasswordResetOut(BaseModel):

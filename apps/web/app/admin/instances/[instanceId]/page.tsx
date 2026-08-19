@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ResetClientPasswordButton } from "@/components/reset-client-password-button";
 import { GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
 import { useInstanceDetail } from "@/lib/instance-detail-context";
-import type { InstanceDetail, InstanceStatus } from "@/lib/types";
+import type { InstanceDetail, InstanceStatus, Plan } from "@/lib/types";
 
 const AUTO_GEN_INTERVAL_LABEL: Record<InstanceDetail["auto_gen_interval"], string> = {
   off: "Por quantidade de conversas analisadas",
@@ -20,6 +21,56 @@ const AUTO_GEN_INTERVAL_LABEL: Record<InstanceDetail["auto_gen_interval"], strin
   "3d": "A cada 3 dias",
   "1w": "Semanalmente",
 };
+
+const PLAN_LABEL: Record<Plan, string> = {
+  starter: "Starter (IA + atendimento humanizado)",
+  pro: "Pro (Starter + campanhas)",
+  enterprise: "Enterprise (Pro + API externa)",
+};
+
+type OverrideChoice = "inherit" | "on" | "off";
+
+function overrideToChoice(value: boolean | null): OverrideChoice {
+  return value === null ? "inherit" : value ? "on" : "off";
+}
+
+function choiceToOverridePayload(choice: OverrideChoice): { override: boolean | null; clear: boolean } {
+  if (choice === "inherit") return { override: null, clear: true };
+  return { override: choice === "on", clear: false };
+}
+
+function FeatureOverrideRow({
+  label,
+  effective,
+  value,
+  onChange,
+}: {
+  label: string;
+  effective: boolean;
+  value: OverrideChoice;
+  onChange: (value: OverrideChoice) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm">{label}</span>
+        <Badge variant={effective ? "default" : "secondary"} className="text-xs">
+          {effective ? "ativo" : "inativo"}
+        </Badge>
+      </div>
+      <Select value={value} onValueChange={(v) => onChange(v as OverrideChoice)}>
+        <SelectTrigger className="w-44">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="inherit">Herdar do plano</SelectItem>
+          <SelectItem value="on">Forcar ativado</SelectItem>
+          <SelectItem value="off">Forcar desativado</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export default function AdminInstanceGeneralPage() {
   const { instance, reload } = useInstanceDetail();
@@ -30,6 +81,14 @@ export default function AdminInstanceGeneralPage() {
   const [autoGeneratePrompt, setAutoGeneratePrompt] = useState(instance.auto_generate_prompt);
   const [autoGenThreshold, setAutoGenThreshold] = useState(instance.auto_gen_conversation_threshold.toString());
   const [autoGenInterval, setAutoGenInterval] = useState(instance.auto_gen_interval);
+  const [plan, setPlan] = useState<Plan>(instance.plan);
+  const [aiOverride, setAiOverride] = useState<OverrideChoice>(overrideToChoice(instance.ai_enabled_override));
+  const [campaignsOverride, setCampaignsOverride] = useState<OverrideChoice>(
+    overrideToChoice(instance.campaigns_enabled_override)
+  );
+  const [apiAccessOverride, setApiAccessOverride] = useState<OverrideChoice>(
+    overrideToChoice(instance.api_access_enabled_override)
+  );
   const [syncedInstance, setSyncedInstance] = useState<InstanceDetail>(instance);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -44,12 +103,19 @@ export default function AdminInstanceGeneralPage() {
     setAutoGeneratePrompt(instance.auto_generate_prompt);
     setAutoGenThreshold(instance.auto_gen_conversation_threshold.toString());
     setAutoGenInterval(instance.auto_gen_interval);
+    setPlan(instance.plan);
+    setAiOverride(overrideToChoice(instance.ai_enabled_override));
+    setCampaignsOverride(overrideToChoice(instance.campaigns_enabled_override));
+    setApiAccessOverride(overrideToChoice(instance.api_access_enabled_override));
   }
 
   async function handleSave() {
     setSaving(true);
     setSaveStatus(null);
     try {
+      const ai = choiceToOverridePayload(aiOverride);
+      const campaigns = choiceToOverridePayload(campaignsOverride);
+      const apiAccess = choiceToOverridePayload(apiAccessOverride);
       await apiFetch(`/instances/${instance.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -60,6 +126,13 @@ export default function AdminInstanceGeneralPage() {
           auto_generate_prompt: autoGeneratePrompt,
           auto_gen_conversation_threshold: Number(autoGenThreshold) || 5,
           auto_gen_interval: autoGenInterval,
+          plan,
+          ai_enabled_override: ai.override,
+          clear_ai_enabled_override: ai.clear,
+          campaigns_enabled_override: campaigns.override,
+          clear_campaigns_enabled_override: campaigns.clear,
+          api_access_enabled_override: apiAccess.override,
+          clear_api_access_enabled_override: apiAccess.clear,
         }),
       });
       reload();
@@ -98,6 +171,44 @@ export default function AdminInstanceGeneralPage() {
             <SelectItem value="archived">Arquivada</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="flex flex-col gap-2 rounded-md border p-3">
+        <Label>Plano</Label>
+        <Select value={plan} onValueChange={(value) => setPlan(value as Plan)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(PLAN_LABEL).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Os selects abaixo forcam um recurso ligado/desligado para esta instancia, independente do plano - use
+          para um combo customizado sem trocar o plano inteiro. &quot;ativo&quot;/&quot;inativo&quot; mostra o
+          efeito real de agora.
+        </p>
+        <FeatureOverrideRow
+          label="Inteligencia artificial"
+          effective={instance.ai_enabled}
+          value={aiOverride}
+          onChange={setAiOverride}
+        />
+        <FeatureOverrideRow
+          label="Campanhas"
+          effective={instance.campaigns_enabled}
+          value={campaignsOverride}
+          onChange={setCampaignsOverride}
+        />
+        <FeatureOverrideRow
+          label="API externa"
+          effective={instance.api_access_enabled}
+          value={apiAccessOverride}
+          onChange={setApiAccessOverride}
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="tokenLimit">Limite diario do assistente de IA (tokens)</Label>
