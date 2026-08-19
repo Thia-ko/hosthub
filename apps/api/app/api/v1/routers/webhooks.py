@@ -13,7 +13,6 @@ from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
-from app.models.prompt_version import PromptVersion
 from app.models.satisfaction_response import SatisfactionResponse
 from app.models.webhook_event import WebhookEvent
 from app.schemas.instance_prompt import InstancePromptOut
@@ -24,7 +23,7 @@ from app.services.conversation_threads import get_or_create_thread
 from app.services.csat import CSAT_THANKS_MESSAGE, parse_rating
 from app.services.escalation import customer_requests_handoff, split_escalation_tag
 from app.services.outbound_webhooks import MESSAGE_RECEIVED, THREAD_ESCALATED, dispatch_event
-from app.services.prompt_content import get_current_prompt_content
+from app.services.prompt_content import get_current_prompt_content, get_current_prompt_version
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
     WhatsAppChannelError,
@@ -298,18 +297,11 @@ async def get_active_prompt(
     instance: Instance = Depends(get_instance_by_webhook_token),
     db: AsyncSession = Depends(get_db),
 ) -> InstancePromptOut:
-    prompt = ""
-    version_number = None
-    if instance.current_prompt_version_id is not None:
-        version = await db.get(PromptVersion, instance.current_prompt_version_id)
-        if version is not None:
-            prompt = version.content
-            version_number = version.version_number
-
+    version = await get_current_prompt_version(db, instance)
     return InstancePromptOut(
         instance_id=instance.id,
         name=instance.name,
         status=instance.status,
-        prompt=prompt,
-        version_number=version_number,
+        prompt=version.content if version else "",
+        version_number=version.version_number if version else None,
     )

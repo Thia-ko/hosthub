@@ -24,6 +24,9 @@ class MessageOrigin(str, enum.Enum):
     AI = "ai"
     HUMAN = "human"
     SYSTEM = "system"
+    # Sent via the public API (app.api.v1.routers.external) by an external system (n8n, a
+    # client's own backend) using an API key - see app.core.api_key_auth.
+    API = "api"
 
 
 class ConversationMessage(Base):
@@ -46,11 +49,12 @@ class ConversationMessage(Base):
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     media_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    # Who authored an OUTBOUND message: AI (auto-reply), HUMAN (manual takeover reply), or
-    # SYSTEM (canned message - CSAT question/thanks, handoff acknowledgement, campaign
-    # broadcast). Null for INBOUND (customer) messages and for OUTBOUND rows written before
-    # this column existed. Used by dashboard_stats.get_resolution_stats to tell "the AI handled
-    # this" apart from "a human had to step in".
+    # Who authored an OUTBOUND message: AI (auto-reply), HUMAN (manual takeover reply inside
+    # HostHub), SYSTEM (canned message - CSAT question/thanks, handoff acknowledgement,
+    # campaign broadcast), or API (sent by an external system via the public API). Null for
+    # INBOUND (customer) messages and for OUTBOUND rows written before this column existed.
+    # Used by dashboard_stats.get_resolution_stats to tell "the AI handled this" apart from "a
+    # human had to step in".
     origin: Mapped[MessageOrigin | None] = mapped_column(
         Enum(MessageOrigin, name="message_origin"), nullable=True
     )

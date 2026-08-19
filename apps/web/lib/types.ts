@@ -60,6 +60,22 @@ export interface OutboundWebhookSubscription {
   created_at: string;
 }
 
+export type ApiKeyScope = "prompt:read" | "data:read" | "messages:write";
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: ApiKeyScope[];
+  active: boolean;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface ApiKeyCreated extends ApiKey {
+  key: string;
+}
+
 export interface InstanceCreateResponse {
   instance: InstanceDetail;
   client_email: string;

@@ -4,11 +4,13 @@ from app.api.v1.routers import (
     ai_assist,
     ai_settings,
     analytics,
+    api_keys,
     auth,
     campaigns,
     conversations,
     dashboard,
     demo,
+    external,
     health,
     instance_members,
     instances,
@@ -37,7 +39,10 @@ api_router.include_router(theme.router)
 api_router.include_router(ai_settings.router)
 api_router.include_router(analytics.router)
 api_router.include_router(outbound_webhooks.router)
+api_router.include_router(api_keys.router)
 api_router.include_router(campaigns.router)
 api_router.include_router(whatsapp_connection.router)
 api_router.include_router(knowledge_files.router)
 api_router.include_router(demo.router)
+api_router.include_router(external.router)
+

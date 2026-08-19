@@ -3,6 +3,8 @@
 import { WebhookInspector } from "@/components/webhook-inspector";
 import { Server } from "lucide-react";
 import { OutboundWebhooksPanel } from "@/components/outbound-webhooks-panel";
+import { ApiKeysPanel } from "@/components/api-keys-panel";
+import { ExternalApiDocs } from "@/components/external-api-docs";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/instance-context";
@@ -50,6 +52,8 @@ export default function WebhookView() {
       <h1 className="text-xl font-semibold">Webhook</h1>
       <WebhookInspector instanceId={detail.id} webhookUrl={webhookUrl} />
       <OutboundWebhooksPanel instanceId={detail.id} />
+      <ExternalApiDocs />
+      <ApiKeysPanel instanceId={detail.id} />
     </div>
   );
 }

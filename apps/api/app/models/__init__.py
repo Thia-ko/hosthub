@@ -1,5 +1,6 @@
 from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
 from app.models.ai_settings import AiSettings
+from app.models.api_key import ApiKey
 from app.models.attendant_pattern import AttendantPattern
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientStatus
@@ -63,4 +64,5 @@ __all__ = [
     "KnowledgeFileUsageMode",
     "DemoChatLog",
     "DemoLead",
+    "ApiKey",
 ]

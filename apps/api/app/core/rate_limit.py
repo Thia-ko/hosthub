@@ -1,4 +1,5 @@
 import time
+import uuid
 from collections import defaultdict, deque
 
 from fastapi import HTTPException, Path, Request, status
@@ -33,3 +34,10 @@ async def rate_limit_demo_ip(request: Request) -> None:
     """Caps requests por IP aparente para o chat publico da demo, alem do cap de mensagens por
     sessao e do orcamento diario de tokens (app.services.demo_sandbox), ambos no banco."""
     _check(f"demo:{request.client.host if request.client else 'unknown'}")
+
+
+def rate_limit_api_key(api_key_id: uuid.UUID) -> None:
+    """Caps requests per API key so a single integration can't overwhelm the API. Called
+    directly from app.core.api_key_auth.require_scope once the key is resolved (its id isn't
+    known until after auth, so this isn't a plain FastAPI Depends like the others above)."""
+    _check(f"apikey:{api_key_id}")

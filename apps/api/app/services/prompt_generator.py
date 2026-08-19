@@ -73,6 +73,20 @@ async def _collect_instance_data(db, instance_id) -> dict:
     }
 
 
+async def get_collected_data(db, instance_id) -> dict:
+    """Public, JSON-safe view of the same data _collect_instance_data gathers to build the
+    generated prompt - reshaped for the external API (app.api.v1.routers.external) instead of
+    raw ORM objects. Deliberately narrower than the full internal set: patterns/traits/
+    knowledge files are prompt-shaping internals, not "data collected about the business"."""
+    data = await _collect_instance_data(db, instance_id)
+    return {
+        "business_info": [{"key": item.key, "value": item.value} for item in data["business_info"]],
+        "products_services": [{"key": item.key, "value": item.value} for item in data["products"]],
+        "policies": [{"key": item.key, "value": item.value} for item in data["policies"]],
+        "faqs": [{"question": faq.question, "answer": faq.answer} for faq in data["faqs"]],
+    }
+
+
 def _format_collected_data(data: dict) -> str:
     def fmt(items: list[ExtractedData]) -> str:
         return "\n".join(f"- {item.key}: {item.value}" for item in items) or "(sem dados ainda)"
