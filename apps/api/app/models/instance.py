@@ -68,6 +68,7 @@ class Instance(Base):
     ai_enabled_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     campaigns_enabled_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     api_access_enabled_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    chatbot_enabled_override: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -23,9 +23,21 @@ export interface InstanceDetail extends Instance {
   ai_enabled_override: boolean | null;
   campaigns_enabled_override: boolean | null;
   api_access_enabled_override: boolean | null;
+  chatbot_enabled_override: boolean | null;
   ai_enabled: boolean;
   campaigns_enabled: boolean;
   api_access_enabled: boolean;
+  chatbot_enabled: boolean;
+}
+
+export interface ChatbotNode {
+  id: string;
+  parent_id: string | null;
+  label: string;
+  keywords: string[];
+  message: string;
+  order_index: number;
+  created_at: string;
 }
 
 export type InstanceMemberRole = "owner" | "member";

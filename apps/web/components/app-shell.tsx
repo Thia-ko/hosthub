@@ -21,6 +21,7 @@ import {
   UserPlus,
   Users,
   Webhook,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLockup } from "@/components/brand-mark";
@@ -58,6 +59,7 @@ const NAV: Record<Section, NavItem[]> = {
     { href: "/app/prompt/historico", label: "Historico", icon: History },
     { href: "/app/conversations", label: "Conversas", icon: MessagesSquare },
     { href: "/app/campaigns", label: "Campanhas", icon: Megaphone },
+    { href: "/app/chatbot", label: "Chatbot", icon: Workflow },
     { href: "/app/webhook", label: "Webhook", icon: Webhook },
     { href: "/app/equipe", label: "Equipe", icon: Users },
   ],
@@ -140,6 +142,11 @@ const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
       target: '[data-tour="/app/campaigns"]',
       title: "Campanhas",
       description: "Envie mensagens em massa para os contatos da sua instancia.",
+    },
+    {
+      target: '[data-tour="/app/chatbot"]',
+      title: "Chatbot",
+      description: "Monte um menu de respostas automaticas sem IA, por numero ou palavra-chave.",
     },
     {
       target: '[data-tour="/app/webhook"]',

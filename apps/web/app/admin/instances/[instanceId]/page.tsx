@@ -89,6 +89,9 @@ export default function AdminInstanceGeneralPage() {
   const [apiAccessOverride, setApiAccessOverride] = useState<OverrideChoice>(
     overrideToChoice(instance.api_access_enabled_override)
   );
+  const [chatbotOverride, setChatbotOverride] = useState<OverrideChoice>(
+    overrideToChoice(instance.chatbot_enabled_override)
+  );
   const [syncedInstance, setSyncedInstance] = useState<InstanceDetail>(instance);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -107,6 +110,7 @@ export default function AdminInstanceGeneralPage() {
     setAiOverride(overrideToChoice(instance.ai_enabled_override));
     setCampaignsOverride(overrideToChoice(instance.campaigns_enabled_override));
     setApiAccessOverride(overrideToChoice(instance.api_access_enabled_override));
+    setChatbotOverride(overrideToChoice(instance.chatbot_enabled_override));
   }
 
   async function handleSave() {
@@ -116,6 +120,7 @@ export default function AdminInstanceGeneralPage() {
       const ai = choiceToOverridePayload(aiOverride);
       const campaigns = choiceToOverridePayload(campaignsOverride);
       const apiAccess = choiceToOverridePayload(apiAccessOverride);
+      const chatbot = choiceToOverridePayload(chatbotOverride);
       await apiFetch(`/instances/${instance.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -133,6 +138,8 @@ export default function AdminInstanceGeneralPage() {
           clear_campaigns_enabled_override: campaigns.clear,
           api_access_enabled_override: apiAccess.override,
           clear_api_access_enabled_override: apiAccess.clear,
+          chatbot_enabled_override: chatbot.override,
+          clear_chatbot_enabled_override: chatbot.clear,
         }),
       });
       reload();
@@ -208,6 +215,12 @@ export default function AdminInstanceGeneralPage() {
           effective={instance.api_access_enabled}
           value={apiAccessOverride}
           onChange={setApiAccessOverride}
+        />
+        <FeatureOverrideRow
+          label="Chatbot (menu sem IA)"
+          effective={instance.chatbot_enabled}
+          value={chatbotOverride}
+          onChange={setChatbotOverride}
         />
       </div>
       <div className="flex flex-col gap-1.5">

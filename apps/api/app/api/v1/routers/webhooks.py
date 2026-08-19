@@ -18,6 +18,7 @@ from app.models.webhook_event import WebhookEvent
 from app.schemas.instance_prompt import InstancePromptOut
 from app.services.ai_assist_budget import get_daily_limit, get_usage_today
 from app.services.ai_assist_provider import get_ai_assist_provider
+from app.services.chatbot import handle_message as handle_chatbot_message
 from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.conversation_threads import get_or_create_thread
 from app.services.csat import CSAT_THANKS_MESSAGE, parse_rating
@@ -141,7 +142,31 @@ async def _maybe_auto_reply(
             await _handoff_to_human(db, instance, parsed, thread)
             return
 
-        if not get_features(instance).ai_enabled:
+        features = get_features(instance)
+
+        # Deterministic (non-AI) chatbot takes priority over the AI path when enabled and a
+        # tree is configured - text-only, since keyword/menu matching has nothing to match
+        # against a bare audio/image message (the AI path below still handles those via
+        # transcription/vision when ai_enabled).
+        if features.chatbot_enabled and parsed.media_kind is None:
+            chatbot_reply = await handle_chatbot_message(db, instance.id, thread, parsed.text)
+            if chatbot_reply is not None:
+                await send_reply(instance, parsed.sender_number, chatbot_reply.text, parsed.whatsbotmais_token)
+                db.add(
+                    ConversationMessage(
+                        instance_id=instance.id,
+                        sender_number=parsed.sender_number,
+                        direction=MessageDirection.OUTBOUND,
+                        kind=MessageKind.TEXT,
+                        text=chatbot_reply.text,
+                        origin=MessageOrigin.CHATBOT,
+                    )
+                )
+                thread.chatbot_node_id = chatbot_reply.next_node_id
+                await db.commit()
+                return
+
+        if not features.ai_enabled:
             logger.info("Instance %s has AI disabled for its plan; skipping auto-reply", instance.id)
             return
 

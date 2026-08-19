@@ -4,6 +4,7 @@ from app.models.api_key import ApiKey
 from app.models.attendant_pattern import AttendantPattern
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.campaign_recipient import CampaignRecipient, CampaignRecipientStatus
+from app.models.chatbot_node import ChatbotNode
 from app.models.conversation_analysis import ConversationAnalysis
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
@@ -11,7 +12,7 @@ from app.models.demo_chat_log import DemoChatLog
 from app.models.demo_lead import DemoLead
 from app.models.extracted_data import ExtractedData
 from app.models.faq_item import FaqItem
-from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
+from app.models.instance import Instance, InstanceStatus, Plan, WhatsAppProvider
 from app.models.instance_knowledge_file import (
     InstanceKnowledgeFile,
     KnowledgeFileKind,
@@ -65,4 +66,6 @@ __all__ = [
     "DemoChatLog",
     "DemoLead",
     "ApiKey",
+    "ChatbotNode",
+    "Plan",
 ]

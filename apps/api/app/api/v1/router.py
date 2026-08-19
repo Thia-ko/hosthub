@@ -7,6 +7,7 @@ from app.api.v1.routers import (
     api_keys,
     auth,
     campaigns,
+    chatbot_nodes,
     conversations,
     dashboard,
     demo,
@@ -45,4 +46,5 @@ api_router.include_router(whatsapp_connection.router)
 api_router.include_router(knowledge_files.router)
 api_router.include_router(demo.router)
 api_router.include_router(external.router)
+api_router.include_router(chatbot_nodes.router)
 

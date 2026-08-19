@@ -14,6 +14,7 @@ def _instance(**overrides) -> SimpleNamespace:
         "ai_enabled_override": None,
         "campaigns_enabled_override": None,
         "api_access_enabled_override": None,
+        "chatbot_enabled_override": None,
     }
     return SimpleNamespace(**{**defaults, **overrides})
 
@@ -24,6 +25,7 @@ def test_starter_plan_has_ai_but_not_campaigns_or_api_access():
     assert features.ai_enabled is True
     assert features.campaigns_enabled is False
     assert features.api_access_enabled is False
+    assert features.chatbot_enabled is False
 
 
 def test_pro_plan_adds_campaigns_but_not_api_access():
@@ -32,14 +34,16 @@ def test_pro_plan_adds_campaigns_but_not_api_access():
     assert features.ai_enabled is True
     assert features.campaigns_enabled is True
     assert features.api_access_enabled is False
+    assert features.chatbot_enabled is False
 
 
-def test_enterprise_plan_has_everything():
+def test_enterprise_plan_has_everything_except_chatbot():
     features = get_features(_instance(plan=Plan.ENTERPRISE))
 
     assert features.ai_enabled is True
     assert features.campaigns_enabled is True
     assert features.api_access_enabled is True
+    assert features.chatbot_enabled is False
 
 
 def test_override_true_grants_a_feature_the_plan_does_not_include():
@@ -64,3 +68,9 @@ def test_ai_enabled_can_be_overridden_off_on_any_plan():
     features = get_features(_instance(plan=Plan.ENTERPRISE, ai_enabled_override=False))
 
     assert features.ai_enabled is False
+
+
+def test_chatbot_override_true_grants_it_on_any_plan():
+    features = get_features(_instance(plan=Plan.STARTER, chatbot_enabled_override=True))
+
+    assert features.chatbot_enabled is True

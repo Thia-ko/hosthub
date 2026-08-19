@@ -20,6 +20,7 @@ const TABS = [
   { href: "/prompt/historico", label: "Historico" },
   { href: "/conversations", label: "Conversas" },
   { href: "/campaigns", label: "Campanhas" },
+  { href: "/chatbot", label: "Chatbot" },
   { href: "/webhook", label: "Webhook" },
   { href: "/equipe", label: "Equipe" },
 ];

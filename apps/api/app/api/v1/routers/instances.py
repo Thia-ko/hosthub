@@ -58,9 +58,11 @@ async def _detail_out(db: AsyncSession, instance: Instance, owner_email: str | N
         ai_enabled_override=instance.ai_enabled_override,
         campaigns_enabled_override=instance.campaigns_enabled_override,
         api_access_enabled_override=instance.api_access_enabled_override,
+        chatbot_enabled_override=instance.chatbot_enabled_override,
         ai_enabled=features.ai_enabled,
         campaigns_enabled=features.campaigns_enabled,
         api_access_enabled=features.api_access_enabled,
+        chatbot_enabled=features.chatbot_enabled,
     )
 
 
@@ -172,6 +174,10 @@ async def update_instance(
         instance.api_access_enabled_override = None
     elif payload.api_access_enabled_override is not None:
         instance.api_access_enabled_override = payload.api_access_enabled_override
+    if payload.clear_chatbot_enabled_override:
+        instance.chatbot_enabled_override = None
+    elif payload.chatbot_enabled_override is not None:
+        instance.chatbot_enabled_override = payload.chatbot_enabled_override
     await db.commit()
     await db.refresh(instance)
     return await _detail_out(db, instance)

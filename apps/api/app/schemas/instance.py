@@ -32,11 +32,13 @@ class InstanceDetailOut(InstanceOut):
     ai_enabled_override: bool | None
     campaigns_enabled_override: bool | None
     api_access_enabled_override: bool | None
+    chatbot_enabled_override: bool | None
     # Effective values (override if set, else the plan's default) - see
     # app.services.plans.get_features. Saves the frontend from reimplementing the resolution.
     ai_enabled: bool
     campaigns_enabled: bool
     api_access_enabled: bool
+    chatbot_enabled: bool
 
 
 class InstanceCreateRequest(BaseModel):
@@ -71,6 +73,8 @@ class InstanceUpdateRequest(BaseModel):
     clear_campaigns_enabled_override: bool = False
     api_access_enabled_override: bool | None = None
     clear_api_access_enabled_override: bool = False
+    chatbot_enabled_override: bool | None = None
+    clear_chatbot_enabled_override: bool = False
 
 
 class ClientPasswordResetOut(BaseModel):
