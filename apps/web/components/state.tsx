@@ -60,17 +60,17 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-3 py-10 text-center",
-        bordered && "rounded-lg border border-dashed",
+        "flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center motion-safe:animate-[state-fade-in_0.35s_ease-out]",
+        bordered && "border border-border/70 bg-muted/30",
         className
       )}
     >
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <div className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
         <Icon className="size-5" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm font-medium">{title}</p>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {action ? <div className="mt-1">{action}</div> : null}
     </div>
