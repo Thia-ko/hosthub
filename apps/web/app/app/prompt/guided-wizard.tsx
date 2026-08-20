@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -113,14 +114,17 @@ function appendLine(existing: string, sentence: string): string {
 
 /** Unified, non-technical hub for building the agent's prompt: all sections the auto-generation
  * pipeline fills from real conversations are stacked vertically (no tab/step navigation to get
- * lost in), with a sticky side nav for quick jumps and a scroll-based highlight of the current
- * section. A couple of sections (tone, business info) also offer small structured pickers that
- * compose a suggested sentence into the free-text box on click, for people who don't know what
- * to write from a blank page - every section still boils down to plain text underneath, so
- * nothing here is mandatory. The last "Prompt completo" section is the exact text that gets
- * saved: normally kept in sync with the sections above, but directly editable too (replaces the
- * old separate "Avancado" mode - there's only one view now). Seeds itself once from
- * `initialContent` - callers remount it (via `key`) when the underlying prompt version changes. */
+ * lost in). On desktop a small floating button on the right (sticky, tracks scroll) reveals the
+ * section list on hover/focus - a compact jump menu, not a permanent rail, since the vertical
+ * stack is already the primary navigation (plain scrolling). Hidden entirely on mobile, where
+ * screen space doesn't afford a floating menu and scrolling is the only way through anyway.
+ * A couple of sections (tone, business info) also offer small structured pickers that compose a
+ * suggested sentence into the free-text box on click, for people who don't know what to write
+ * from a blank page - every section still boils down to plain text underneath, so nothing here
+ * is mandatory. The last "Prompt completo" section is the exact text that gets saved: normally
+ * kept in sync with the sections above, but directly editable too (replaces the old separate
+ * "Avancado" mode - there's only one view now). Seeds itself once from `initialContent` -
+ * callers remount it (via `key`) when the underlying prompt version changes. */
 export function GuidedWizard({
   initialContent,
   onAssembledChange,
@@ -214,7 +218,7 @@ export function GuidedWizard({
 
   function navButtonClass(key: NavKey): string {
     return cn(
-      "relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-150",
+      "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors duration-150",
       activeKey === key
         ? "bg-accent/60 font-medium text-foreground"
         : "font-normal text-muted-foreground/70 hover:bg-accent/30 hover:text-foreground"
@@ -223,38 +227,46 @@ export function GuidedWizard({
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <nav className="flex gap-1 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:order-2 lg:w-52 lg:shrink-0 lg:flex-col lg:overflow-visible lg:border-l lg:border-border/40 lg:pb-0 lg:pl-4">
-        {SECTIONS.map((section) => (
+      <div className="hidden lg:sticky lg:top-4 lg:order-2 lg:block lg:shrink-0">
+        <div className="group/nav relative inline-block">
           <button
-            key={section.key}
             type="button"
-            onClick={() => scrollToSection(section.key)}
-            className={navButtonClass(section.key)}
+            aria-label="Navegar entre secoes do prompt"
+            className="flex size-9 items-center justify-center rounded-full border border-border/40 bg-background text-muted-foreground shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:border-border focus-visible:text-foreground"
           >
-            <span
-              aria-hidden
-              className={cn(
-                "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary transition-opacity",
-                activeKey === section.key ? "opacity-100" : "opacity-0"
-              )}
-            />
-            {section.title}
-            {answers[section.key]?.trim() ? (
-              <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />
-            ) : null}
+            <List className="size-4" />
           </button>
-        ))}
-        <button type="button" onClick={() => scrollToSection(FULL_TEXT_KEY)} className={navButtonClass(FULL_TEXT_KEY)}>
-          <span
-            aria-hidden
+          <nav
             className={cn(
-              "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary transition-opacity",
-              activeKey === FULL_TEXT_KEY ? "opacity-100" : "opacity-0"
+              "invisible absolute right-0 top-full z-20 flex w-56 origin-top-right scale-95 flex-col gap-0.5 rounded-lg border border-border/40 bg-popover p-1.5 opacity-0 shadow-lg transition-[opacity,transform,visibility] duration-150",
+              "group-hover/nav:visible group-hover/nav:scale-100 group-hover/nav:opacity-100",
+              "group-focus-within/nav:visible group-focus-within/nav:scale-100 group-focus-within/nav:opacity-100"
             )}
-          />
-          Prompt completo
-        </button>
-      </nav>
+          >
+            {SECTIONS.map((section) => (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => scrollToSection(section.key)}
+                className={navButtonClass(section.key)}
+              >
+                {section.title}
+                {answers[section.key]?.trim() ? (
+                  <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />
+                ) : null}
+              </button>
+            ))}
+            <div aria-hidden className="my-1 h-px bg-border/40" />
+            <button
+              type="button"
+              onClick={() => scrollToSection(FULL_TEXT_KEY)}
+              className={navButtonClass(FULL_TEXT_KEY)}
+            >
+              Prompt completo
+            </button>
+          </nav>
+        </div>
+      </div>
 
       <div className="flex flex-1 flex-col gap-4">
         {SECTIONS.map((section) => (
