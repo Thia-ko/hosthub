@@ -77,22 +77,39 @@ export default function LandingView() {
       </header>
 
       <main className="flex-1">
-        <section className="flex flex-col items-center gap-6 px-4 py-16 text-center sm:px-8 sm:py-24">
-          <span className="text-sm font-medium text-primary">Atendimento no WhatsApp com IA</span>
-          <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
-            Sua IA responde no WhatsApp enquanto você cuida do resto do negócio
-          </h1>
-          <p className="max-w-2xl text-balance text-muted-foreground sm:text-lg">
-            A Hosthub conecta um agente de IA treinado no seu negócio ao WhatsApp: responde clientes 24/7, sabe
-            quando chamar um humano e nunca esquece o que você já configurou.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" asChild>
-              <a href="#demo">Testar demonstração grátis</a>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/login">Já sou cliente — Entrar</Link>
-            </Button>
+        <section className="relative overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute -top-24 -left-32 size-96 rounded-full bg-primary/15 blur-3xl motion-safe:animate-[mesh-drift_16s_ease-in-out_infinite]" />
+            <div className="absolute top-1/3 -right-24 size-80 rounded-full bg-chart-2/10 blur-3xl" />
+            <div className="absolute -bottom-32 left-1/4 size-72 rounded-full bg-primary/10 blur-3xl" />
+          </div>
+
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+            <div className="flex flex-col items-start gap-6 text-left">
+              <span className="text-sm font-medium text-primary">Atendimento no WhatsApp com IA</span>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
+                Sua IA responde no WhatsApp enquanto você cuida do resto do negócio
+              </h1>
+              <p className="max-w-xl text-balance text-muted-foreground sm:text-lg">
+                A Hosthub conecta um agente de IA treinado no seu negócio ao WhatsApp: responde clientes 24/7, sabe
+                quando chamar um humano e nunca esquece o que você já configurou.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button size="lg" asChild>
+                  <Link href="/login">Criar minha conta</Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <a href="#como-funciona">Ver como funciona</a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="w-full">
+              <p className="mb-2 text-center text-xs font-medium text-muted-foreground">
+                Converse com o agente de demonstração agora — sem cadastro
+              </p>
+              <DemoChatWidget />
+            </div>
           </div>
         </section>
 
@@ -112,7 +129,7 @@ export default function LandingView() {
           </div>
         </section>
 
-        <section className="bg-muted/30 px-4 py-16 sm:px-8">
+        <section id="como-funciona" className="bg-muted/30 px-4 py-16 sm:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 className="text-center text-2xl font-semibold sm:text-3xl">Como funciona</h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -133,16 +150,16 @@ export default function LandingView() {
           </div>
         </section>
 
-        <section id="demo" className="px-4 py-16 sm:px-8">
-          <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-            <h2 className="text-2xl font-semibold sm:text-3xl">Veja a IA respondendo antes de decidir</h2>
+        <section className="border-t px-4 py-16 text-center sm:px-8 sm:py-20">
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-4">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Pronto para colocar sua IA pra atender?</h2>
             <p className="text-muted-foreground">
-              Converse com o agente de demonstração da Barbearia Vintage (negócio fictício) e veja exatamente como
-              seus clientes seriam atendidos. Limite de 6 mensagens por sessão.
+              Configure o agente com sua base de conhecimento em minutos e conecte ao WhatsApp da sua empresa — o
+              teste que você acabou de fazer lá em cima já é o produto de verdade.
             </p>
-          </div>
-          <div className="mx-auto mt-8 max-w-2xl">
-            <DemoChatWidget />
+            <Button size="lg" asChild>
+              <Link href="/login">Criar minha conta</Link>
+            </Button>
           </div>
         </section>
       </main>

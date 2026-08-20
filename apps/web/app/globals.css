@@ -129,6 +129,19 @@
   }
 }
 
+/* Used by the landing hero's decorative gradient-mesh background - see app/landing-view.tsx.
+ * Purely cosmetic drift on one blob, kept slow/subtle; motion-safe: in the component already
+ * skips it under prefers-reduced-motion. */
+@keyframes mesh-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(2rem, 1.5rem);
+  }
+}
+
 /* Used by <BrandMark active /> to signal "AI is working" without a generic spinner - see
  * components/brand-mark.tsx. motion-safe: variant in the component already skips these under
  * prefers-reduced-motion, so no separate reduced-motion override is needed here. */
