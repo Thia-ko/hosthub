@@ -214,16 +214,16 @@ export function GuidedWizard({
 
   function navButtonClass(key: NavKey): string {
     return cn(
-      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+      "relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-150",
       activeKey === key
-        ? "bg-accent text-accent-foreground"
-        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+        ? "bg-accent/60 font-medium text-foreground"
+        : "font-normal text-muted-foreground/70 hover:bg-accent/30 hover:text-foreground"
     );
   }
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <nav className="flex gap-1 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:w-52 lg:shrink-0 lg:flex-col lg:overflow-visible lg:pb-0">
+      <nav className="flex gap-1 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:order-2 lg:w-52 lg:shrink-0 lg:flex-col lg:overflow-visible lg:border-l lg:border-border/40 lg:pb-0 lg:pl-4">
         {SECTIONS.map((section) => (
           <button
             key={section.key}
@@ -231,13 +231,27 @@ export function GuidedWizard({
             onClick={() => scrollToSection(section.key)}
             className={navButtonClass(section.key)}
           >
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary transition-opacity",
+                activeKey === section.key ? "opacity-100" : "opacity-0"
+              )}
+            />
             {section.title}
             {answers[section.key]?.trim() ? (
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+              <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />
             ) : null}
           </button>
         ))}
         <button type="button" onClick={() => scrollToSection(FULL_TEXT_KEY)} className={navButtonClass(FULL_TEXT_KEY)}>
+          <span
+            aria-hidden
+            className={cn(
+              "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary transition-opacity",
+              activeKey === FULL_TEXT_KEY ? "opacity-100" : "opacity-0"
+            )}
+          />
           Prompt completo
         </button>
       </nav>
