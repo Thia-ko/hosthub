@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+
+/* Used by <BrandMark active /> to signal "AI is working" without a generic spinner - see
+ * components/brand-mark.tsx. motion-safe: variant in the component already skips these under
+ * prefers-reduced-motion, so no separate reduced-motion override is needed here. */
+@keyframes brand-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes brand-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+@keyframes brand-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { apiFetch, errorMessage, ApiError } from "@/lib/api-client";
 import { cn, randomId } from "@/lib/utils";
+import { BrandMark } from "@/components/brand-mark";
 import { DemoLeadForm } from "@/components/demo-lead-form";
 
 const MAX_MESSAGES = 6;
@@ -88,6 +89,16 @@ export function DemoChatWidget() {
               </div>
             </div>
           ))}
+          {loading ? (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                  <BrandMark active className="size-3" />
+                </span>
+                <span className="text-xs text-muted-foreground">Pensando...</span>
+              </div>
+            </div>
+          ) : null}
         </div>
         <p className="text-xs text-muted-foreground">Demonstração com dados fictícios — não é sua IA real.</p>
         {remaining > 0 ? (
