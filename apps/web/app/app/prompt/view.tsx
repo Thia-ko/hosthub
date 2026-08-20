@@ -15,20 +15,17 @@ import { GuidedWizard } from "./guided-wizard";
 import { KnowledgeFileManager } from "@/components/knowledge-file-manager";
 import { PendingPromptBanner } from "./pending-prompt-banner";
 import { PromptSandbox } from "@/components/prompt-sandbox";
-import { PENDING_TEMPLATE_KEY } from "@/lib/constants";
+import { TemplatePickerSheet } from "./template-picker-sheet";
+import { VersionHistorySheet } from "./version-history-sheet";
 
 export function PromptEditorView({ instanceId }: { instanceId: string }) {
-  const [pendingTemplate] = useState(() => {
-    const raw = sessionStorage.getItem(PENDING_TEMPLATE_KEY);
-    if (!raw) return null;
-    sessionStorage.removeItem(PENDING_TEMPLATE_KEY);
-    return JSON.parse(raw) as { content: string; title: string };
-  });
   const [current, setCurrent] = useState<PromptVersionDetail | null>(null);
-  const [content, setContent] = useState(pendingTemplate?.content ?? "");
-  const [changeNote, setChangeNote] = useState(pendingTemplate ? `Template: ${pendingTemplate.title}` : "");
-  const [pendingSource, setPendingSource] = useState<"manual" | "template">(pendingTemplate ? "template" : "manual");
-  const [loading, setLoading] = useState(!pendingTemplate);
+  const [content, setContent] = useState("");
+  const [changeNote, setChangeNote] = useState("");
+  const [pendingSource, setPendingSource] = useState<"manual" | "template">("manual");
+  const [contentKey, setContentKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -42,12 +39,14 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
         if (!latest) {
           setCurrent(null);
           setContent("");
+          setContentKey((key) => key + 1);
           return;
         }
         return apiFetch<PromptVersionDetail>(`/instances/${id}/prompt-versions/${latest.id}`).then(
           (detail) => {
             setCurrent(detail);
             setContent(detail.content);
+            setContentKey((key) => key + 1);
           }
         );
       })
@@ -58,13 +57,12 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
   }, []);
 
   useEffect(() => {
-    if (pendingTemplate) return;
     // Fetching on mount is a necessary Effect (react.dev/learn/you-might-not-need-an-effect
     // #fetching-data); loadCurrentVersion resets loading/error synchronously before the fetch
     // settles, which set-state-in-effect can't distinguish from a derived-state anti-pattern.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCurrentVersion(instanceId);
-  }, [instanceId, loadCurrentVersion, pendingTemplate]);
+  }, [instanceId, loadCurrentVersion]);
 
 
   async function handleSave() {
@@ -78,6 +76,7 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
       setCurrent(version);
       setChangeNote("");
       setPendingSource("manual");
+      setRefreshKey((key) => key + 1);
       setSaveStatus({ tone: "success", text: `Versao ${version.version_number} salva.` });
     } catch (err) {
       setSaveStatus({ tone: "error", text: errorMessage(err, GENERIC_SAVE_ERROR_MESSAGE) });
@@ -92,6 +91,25 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
         <h1 className="text-xl font-semibold">Agente de IA</h1>
         <div className="flex items-center gap-2">
           <PromptSandbox instanceId={instanceId} promptContent={content} />
+          <TemplatePickerSheet
+            onSelect={(template) => {
+              setContent(template.content);
+              setChangeNote(`Template: ${template.title}`);
+              setPendingSource("template");
+              setContentKey((key) => key + 1);
+            }}
+          />
+          <VersionHistorySheet
+            instanceId={instanceId}
+            currentVersionNumber={current?.version_number ?? null}
+            refreshKey={refreshKey}
+            onRestored={(version) => {
+              setCurrent(version);
+              setContent(version.content);
+              setContentKey((key) => key + 1);
+              setRefreshKey((key) => key + 1);
+            }}
+          />
           <AiAssistPanel
             instanceId={instanceId}
             currentContent={content}
@@ -111,10 +129,8 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
             currentContent={current?.content ?? ""}
             onResolved={() => loadCurrentVersion(instanceId)}
           />
-          <p className="text-sm text-muted-foreground">
-            {current ? `Versao atual: ${current.version_number}` : "Nenhuma versao salva ainda."}
-          </p>
-          <GuidedWizard key={current?.id ?? "new"} initialContent={content} onAssembledChange={setContent} />
+          {!current ? <p className="text-sm text-muted-foreground">Nenhuma versao salva ainda.</p> : null}
+          <GuidedWizard key={contentKey} initialContent={content} onAssembledChange={setContent} />
           <div className="rounded-lg border p-4">
             <div className="mb-3 flex flex-col gap-1">
               <h2 className="text-sm font-semibold">Arquivos de conhecimento</h2>

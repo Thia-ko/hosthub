@@ -8,15 +8,14 @@ import {
   Cable,
   Database,
   FileText,
-  History,
   LayoutDashboard,
-  LayoutTemplate,
   LogOut,
   Megaphone,
   Menu,
   MessageSquare,
   MessagesSquare,
   Palette,
+  Radio,
   Server,
   UserPlus,
   Users,
@@ -39,29 +38,64 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>;
 }
 
+interface NavGroup {
+  /** Omitted for the top-level group (dashboard/overview), which renders without a heading. */
+  label?: string;
+  items: NavItem[];
+}
+
 type Section = "admin" | "app";
 
-const NAV: Record<Section, NavItem[]> = {
+const NAV: Record<Section, NavGroup[]> = {
   admin: [
-    { href: "/admin", label: "Visao geral", icon: LayoutDashboard },
-    { href: "/admin/instances", label: "Instancias", icon: Server },
-    { href: "/admin/leads", label: "Leads", icon: UserPlus },
-    { href: "/admin/templates", label: "Templates", icon: FileText },
-    { href: "/admin/theme", label: "Tema", icon: Palette },
-    { href: "/admin/ai-settings", label: "IA", icon: Bot },
+    { items: [{ href: "/admin", label: "Visao geral", icon: LayoutDashboard }] },
+    {
+      label: "Gestao",
+      items: [
+        { href: "/admin/instances", label: "Instancias", icon: Server },
+        { href: "/admin/leads", label: "Leads", icon: UserPlus },
+      ],
+    },
+    {
+      label: "Configuracoes",
+      items: [
+        { href: "/admin/templates", label: "Templates", icon: FileText },
+        { href: "/admin/theme", label: "Tema", icon: Palette },
+        { href: "/admin/ai-settings", label: "IA", icon: Bot },
+      ],
+    },
   ],
   app: [
-    { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/app/prompt", label: "Agente de IA", icon: MessageSquare },
-    { href: "/app/conexao", label: "Conexao", icon: Cable },
-    { href: "/app/prompt/templates", label: "Templates", icon: LayoutTemplate },
-    { href: "/app/prompt/dados-coletados", label: "Dados coletados", icon: Database },
-    { href: "/app/prompt/historico", label: "Historico", icon: History },
-    { href: "/app/conversations", label: "Conversas", icon: MessagesSquare },
-    { href: "/app/campaigns", label: "Campanhas", icon: Megaphone },
-    { href: "/app/chatbot", label: "Chatbot", icon: Workflow },
-    { href: "/app/webhook", label: "Webhook", icon: Webhook },
-    { href: "/app/equipe", label: "Equipe", icon: Users },
+    { items: [{ href: "/app", label: "Dashboard", icon: LayoutDashboard }] },
+    {
+      label: "Atendimento",
+      items: [
+        { href: "/app/conversations", label: "Conversas", icon: MessagesSquare },
+        { href: "/app/filas", label: "Filas de Atendimento", icon: Radio },
+      ],
+    },
+    {
+      label: "Agente de IA",
+      items: [
+        { href: "/app/prompt", label: "Agente de IA", icon: MessageSquare },
+        { href: "/app/prompt/dados-coletados", label: "Dados coletados", icon: Database },
+      ],
+    },
+    {
+      label: "Automacao",
+      items: [
+        { href: "/app/chatbot", label: "Chatbot", icon: Workflow },
+        { href: "/app/campaigns", label: "Campanhas", icon: Megaphone },
+      ],
+    },
+    {
+      label: "Configuracoes",
+      items: [
+        { href: "/app/conexao", label: "Conexao", icon: Cable },
+        { href: "/app/webhook", label: "Webhook", icon: Webhook },
+        { href: "/app/equipe", label: "Equipe", icon: Users },
+      ],
+    },
   ],
 };
 
@@ -109,19 +143,20 @@ const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
       description: "Visao geral da sua instancia: conversas, prompts pendentes e metricas.",
     },
     {
+      target: '[data-tour="/app/conversations"]',
+      title: "Conversas",
+      description: "Acompanhe as conversas do WhatsApp em tempo real.",
+    },
+    {
+      target: '[data-tour="/app/filas"]',
+      title: "Filas de Atendimento",
+      description: "Veja os atendimentos que a IA escalou para um humano e assuma o que quiser.",
+    },
+    {
       target: '[data-tour="/app/prompt"]',
       title: "Agente de IA",
-      description: "Configure a identidade, o tom e o conhecimento do seu agente de IA.",
-    },
-    {
-      target: '[data-tour="/app/conexao"]',
-      title: "Conexao",
-      description: "Conecte o WhatsApp da instancia via WhatsBotMais, Evolution API ou API Oficial da Meta.",
-    },
-    {
-      target: '[data-tour="/app/prompt/templates"]',
-      title: "Templates",
-      description: "Escolha um modelo pronto para comecar a configurar seu agente mais rapido.",
+      description:
+        "Configure a identidade, o tom e o conhecimento do seu agente de IA. Templates e historico de versoes ficam disponiveis direto nesta tela.",
     },
     {
       target: '[data-tour="/app/prompt/dados-coletados"]',
@@ -129,14 +164,9 @@ const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
       description: "Veja o que a IA aprendeu automaticamente com as conversas dos clientes.",
     },
     {
-      target: '[data-tour="/app/prompt/historico"]',
-      title: "Historico",
-      description: "Consulte e compare versoes anteriores do prompt.",
-    },
-    {
-      target: '[data-tour="/app/conversations"]',
-      title: "Conversas",
-      description: "Acompanhe as conversas do WhatsApp em tempo real.",
+      target: '[data-tour="/app/chatbot"]',
+      title: "Chatbot",
+      description: "Monte um menu de respostas automaticas sem IA, por numero ou palavra-chave.",
     },
     {
       target: '[data-tour="/app/campaigns"]',
@@ -144,9 +174,9 @@ const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
       description: "Envie mensagens em massa para os contatos da sua instancia.",
     },
     {
-      target: '[data-tour="/app/chatbot"]',
-      title: "Chatbot",
-      description: "Monte um menu de respostas automaticas sem IA, por numero ou palavra-chave.",
+      target: '[data-tour="/app/conexao"]',
+      title: "Conexao",
+      description: "Conecte o WhatsApp da instancia via WhatsBotMais, Evolution API ou API Oficial da Meta.",
     },
     {
       target: '[data-tour="/app/webhook"]',
@@ -161,7 +191,7 @@ const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
   ],
 };
 
-/** Longest matching nav href wins, so nested routes (e.g. /app/prompt/templates) don't
+/** Longest matching nav href wins, so nested routes (e.g. /app/prompt/dados-coletados) don't
  * highlight their parent (/app/prompt) at the same time. */
 function activeHref(pathname: string, items: NavItem[]): string | null {
   const matches = items.filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -188,8 +218,11 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const items = NAV[section];
-  const active = useMemo(() => activeHref(pathname, items), [pathname, items]);
+  const groups = NAV[section];
+  const active = useMemo(
+    () => activeHref(pathname, groups.flatMap((group) => group.items)),
+    [pathname, groups]
+  );
   const tourSteps = TOUR_STEPS[section];
   const [tourStep, setTourStep] = useState(0);
   const tourSeen = useSyncExternalStore(
@@ -216,29 +249,41 @@ export function AppShell({
       <div className="px-4 py-4">
         <BrandLockup subtitle={SECTION_LABEL[section]} subtitleClassName="text-sidebar-foreground/60" />
       </div>
-      <nav className="flex flex-1 flex-col gap-1 px-2">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.href === active;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-tour={item.href}
-              onClick={() => setOpen(false)}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-1 flex-col px-2">
+        {groups.map((group, groupIndex) => (
+          <div
+            key={group.label ?? `group-${groupIndex}`}
+            className={cn("flex flex-col gap-1", groupIndex > 0 && "mt-4")}
+          >
+            {group.label ? (
+              <span className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/40">
+                {group.label}
+              </span>
+            ) : null}
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.href === active;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  data-tour={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="flex flex-col gap-2 border-t border-sidebar-border px-3 py-3">
         <div className="flex items-center justify-between gap-2 px-1">
@@ -260,7 +305,7 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-muted/20 lg:flex">
+    <div className="min-h-screen bg-background lg:flex">
       <aside className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[1px_0_4px_rgba(0,0,0,0.04)] lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col dark:shadow-none">
         {sidebarBody}
       </aside>
