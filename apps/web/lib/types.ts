@@ -354,3 +354,10 @@ export interface DemoLead {
   created_at: string;
   contacted_at: string | null;
 }
+
+export interface PublicPlatformStats {
+  ai_resolved_threads: number;
+  resolution_rate_pct: number | null;
+  estimated_hours_saved: number;
+  window_days: number;
+}

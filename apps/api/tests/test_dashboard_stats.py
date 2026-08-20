@@ -141,11 +141,11 @@ async def test_empty_instance_returns_seven_zero_filled_days(instance):
 
 
 async def test_buckets_by_day_excludes_outbound_and_out_of_range(instance):
-    await _inbound_message(instance, timedelta(hours=1))  # today
-    await _inbound_message(instance, timedelta(hours=2))  # today, same bucket
+    await _inbound_message(instance, timedelta(minutes=2))  # today
+    await _inbound_message(instance, timedelta(minutes=1))  # today, same bucket
     await _inbound_message(instance, timedelta(days=2))  # 2 days ago
     await _inbound_message(instance, timedelta(days=10))  # outside the 7-day window
-    await _outbound_message(instance, timedelta(hours=1))  # our own reply - must not count
+    await _outbound_message(instance, timedelta(minutes=1))  # our own reply - must not count
 
     async with async_session() as db:
         result = await get_daily_message_counts(db, instance_id=instance.id, days=7)
@@ -210,8 +210,8 @@ async def test_platform_wide_count_includes_every_instance(instance):
 
 
 async def test_token_usage_buckets_by_day_and_scopes_to_instance(instance):
-    await _ai_assist_request(instance, total_tokens=150, age=timedelta(hours=1))
-    await _ai_assist_request(instance, total_tokens=50, age=timedelta(hours=2))
+    await _ai_assist_request(instance, total_tokens=150, age=timedelta(minutes=2))
+    await _ai_assist_request(instance, total_tokens=50, age=timedelta(minutes=1))
     await _ai_assist_request(instance, total_tokens=999, age=timedelta(days=10))  # out of window
 
     async with async_session() as db:

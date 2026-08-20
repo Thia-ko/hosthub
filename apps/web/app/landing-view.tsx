@@ -7,6 +7,7 @@ import { BrandLockup } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { DemoChatWidget } from "@/components/demo-chat-widget";
+import { LiveStatsTicker } from "@/components/live-stats-ticker";
 
 /** The 4 pillars mirror `app/services/plans.py::PLAN_DEFAULTS` exactly - this is the real
  * feature matrix the backend gates on, not aspirational copy. Card sizing (bento, not a
@@ -121,6 +122,8 @@ export default function LandingView() {
             </div>
           </div>
         </section>
+
+        <LiveStatsTicker />
 
         <section className="px-4 py-16 sm:px-8">
           <div className="mx-auto max-w-5xl">

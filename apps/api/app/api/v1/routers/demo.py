@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import require_admin
-from app.core.rate_limit import rate_limit_demo_ip
+from app.core.rate_limit import rate_limit_demo_ip, rate_limit_public_stats_ip
 from app.db.session import get_db
 from app.models.demo_lead import DemoLead
+from app.schemas.dashboard import PublicPlatformStats
 from app.schemas.demo import (
     DemoChatRequest,
     DemoChatResponse,
@@ -20,6 +21,7 @@ from app.schemas.demo import (
 )
 from app.services import demo_sandbox
 from app.services.ai_assist_provider import AiAssistProvider, get_ai_assist_provider
+from app.services.dashboard_stats import get_resolution_stats
 
 router = APIRouter(prefix="/demo", tags=["demo"])
 
@@ -104,3 +106,18 @@ async def update_demo_lead(
     await db.commit()
     await db.refresh(lead)
     return _lead_out(lead)
+
+
+@router.get("/stats", response_model=PublicPlatformStats, dependencies=[Depends(rate_limit_public_stats_ip)])
+async def get_public_stats(db: AsyncSession = Depends(get_db)) -> PublicPlatformStats:
+    """Platform-wide aggregate (every instance, no per-tenant breakdown) - powers the landing
+    page's live ticker. Same query the admin portfolio overview uses
+    (dashboard_stats.get_resolution_stats), just public and unscoped."""
+    window_days = 7
+    stats = await get_resolution_stats(db, days=window_days)
+    return PublicPlatformStats(
+        ai_resolved_threads=stats.ai_resolved_threads,
+        resolution_rate_pct=stats.resolution_rate_pct,
+        estimated_hours_saved=stats.estimated_hours_saved,
+        window_days=window_days,
+    )

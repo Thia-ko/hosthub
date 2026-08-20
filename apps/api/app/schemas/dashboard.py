@@ -45,3 +45,13 @@ class AdminDashboardOverview(BaseModel):
     ai_resolved_threads: int
     resolution_rate_pct: float | None
     estimated_hours_saved: float
+
+
+class PublicPlatformStats(BaseModel):
+    """Cross-tenant aggregate only - no per-instance breakdown, no PII. Powers the landing
+    page's live ticker (app/landing-view.tsx / app/api/v1/routers/demo.py:get_public_stats)."""
+
+    ai_resolved_threads: int
+    resolution_rate_pct: float | None
+    estimated_hours_saved: float
+    window_days: int
