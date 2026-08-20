@@ -3,12 +3,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.core.deps import get_owned_instance
+from app.core.deps import get_current_user, get_owned_instance
 from app.db.session import get_db
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
-from app.models.conversation_thread import ConversationThread
+from app.models.conversation_thread import ConversationThread, QueueStatus
 from app.models.instance import Instance
+from app.models.user import User
 from app.schemas.conversation import ConversationMessageOut, ConversationReplyRequest, ConversationSummary
+from app.services import queue as queue_service
 from app.services.conversation_threads import get_or_create_thread
 from app.services.whatsapp_channel import WhatsAppChannelError, send_reply
 
@@ -85,10 +87,14 @@ async def reply_to_conversation(
     sender_number: str,
     payload: ConversationReplyRequest,
     instance: Instance = Depends(get_owned_instance),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationMessage:
     """Manual human takeover: sends a message on the instance's WhatsApp channel and pauses
-    the AI auto-reply for this thread, since a human is now handling it directly."""
+    the AI auto-reply for this thread, since a human is now handling it directly. If the thread
+    was sitting in the queue (QUEUED/ON_HOLD), replying here implicitly claims it for `user` -
+    whoever actually messages the customer is the de-facto owner, whether or not they went
+    through the queue panel's "Assumir" button first."""
     thread = await get_or_create_thread(db, instance.id, sender_number)
     try:
         await send_reply(instance, sender_number, payload.text, thread.last_whatsbotmais_token)
@@ -106,6 +112,8 @@ async def reply_to_conversation(
     db.add(message)
     thread.ai_paused = True
     thread.escalated = False
+    if thread.queue_status in (QueueStatus.QUEUED, QueueStatus.ON_HOLD):
+        await queue_service.claim(db, thread, user.id)
     await db.commit()
     await db.refresh(message)
     return message
@@ -129,8 +137,12 @@ async def resume_conversation(
     instance: Instance = Depends(get_owned_instance),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """Hands control back to the AI: clears the pause/escalation flags and, if this thread was
+    in the queue, fully resets it (`queue_service.reset`) so no stale assignment/QUEUED card
+    lingers in the queue panel."""
     thread = await get_or_create_thread(db, instance.id, sender_number)
     thread.ai_paused = False
     thread.escalated = False
+    queue_service.reset(thread)
     await db.commit()
     return {"ai_paused": False, "escalated": False}

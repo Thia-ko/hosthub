@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -30,6 +30,8 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiFetch } from "@/lib/api-client";
 import { ONBOARDING_SEEN_PREFIX } from "@/lib/constants";
+import { useOwnInstancesOptional } from "@/lib/instance-context";
+import type { QueueItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -199,6 +201,37 @@ function activeHref(pathname: string, items: NavItem[]): string | null {
   return matches[0]?.href ?? null;
 }
 
+const QUEUE_POLL_MS = 5000;
+
+/** Live count badge on the "Filas de Atendimento" nav item - polls the same endpoint
+ * QueuePanel itself polls (GET /instances/{id}/queue) independently, so the count stays
+ * visible from any page in the client section, not just while the queue screen is open. */
+function useQueueCount(instanceId: string | null): number | null {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!instanceId) return;
+    let cancelled = false;
+    function poll() {
+      apiFetch<QueueItem[]>(`/instances/${instanceId}/queue`)
+        .then((items) => {
+          if (!cancelled) setCount(items.length);
+        })
+        .catch(() => {
+          if (!cancelled) setCount(null);
+        });
+    }
+    poll();
+    const interval = setInterval(poll, QUEUE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [instanceId]);
+
+  return instanceId ? count : null;
+}
+
 function subscribeToTourDismissal(callback: () => void) {
   window.addEventListener("storage", callback);
   return () => window.removeEventListener("storage", callback);
@@ -223,6 +256,8 @@ export function AppShell({
     () => activeHref(pathname, groups.flatMap((group) => group.items)),
     [pathname, groups]
   );
+  const ownInstances = useOwnInstancesOptional();
+  const queueCount = useQueueCount(section === "app" ? (ownInstances?.selectedId ?? null) : null);
   const tourSteps = TOUR_STEPS[section];
   const [tourStep, setTourStep] = useState(0);
   const tourSeen = useSyncExternalStore(
@@ -278,7 +313,15 @@ export function AppShell({
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {item.label}
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.href === "/app/filas" && queueCount ? (
+                    <Badge
+                      variant="destructive"
+                      className="h-5 min-w-5 shrink-0 justify-center rounded-full px-1.5 text-[11px] tabular-nums"
+                    >
+                      {queueCount}
+                    </Badge>
+                  ) : null}
                 </Link>
               );
             })}

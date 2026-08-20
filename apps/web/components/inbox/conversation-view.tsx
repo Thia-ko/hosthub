@@ -1,7 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, MessageSquare, MessagesSquare, Mic } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Image as ImageIcon,
+  Info,
+  MessageSquare,
+  MessagesSquare,
+  Mic,
+  UserCheck,
+  Webhook,
+  Workflow,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,13 +20,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/state";
 import { GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE, apiFetch, errorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import type { ConversationMessage, ConversationSummary, MessageKind } from "@/lib/types";
+import type { ConversationMessage, ConversationSummary, MessageKind, MessageOrigin } from "@/lib/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const PAGE_SIZE = 50;
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+/** Groups message bubbles into day sections, same convention WhatsApp itself uses - "Hoje"/
+ * "Ontem" for the last two days, a full date otherwise. */
+function formatDateSeparator(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(date, today)) return "Hoje";
+  if (sameDay(date, yesterday)) return "Ontem";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 /** No display name is stored for a WhatsApp contact, only the phone number - the last 4 digits
@@ -36,6 +61,17 @@ function kindLabel(kind: MessageKind): string | null {
   if (kind === "image") return "Imagem";
   return null;
 }
+
+// Who authored an outbound message - never shown for inbound (always the customer). Lets a
+// human agent tell an AI reply, a colleague's manual reply, a canned system message, and a
+// chatbot-tree reply apart at a glance while scrolling history.
+const ORIGIN_META: Record<MessageOrigin, { label: string; icon: typeof Bot }> = {
+  ai: { label: "IA", icon: Bot },
+  human: { label: "Atendente", icon: UserCheck },
+  system: { label: "Sistema", icon: Info },
+  api: { label: "API", icon: Webhook },
+  chatbot: { label: "Chatbot", icon: Workflow },
+};
 
 function ConversationListItem({
   conversation,
@@ -88,7 +124,9 @@ function ConversationListItem({
 
 function MessageBubble({ message }: { message: ConversationMessage }) {
   const outbound = message.direction === "outbound";
-  const label = kindLabel(message.kind);
+  const kindTag = kindLabel(message.kind);
+  const origin = outbound && message.origin ? ORIGIN_META[message.origin] : null;
+  const OriginIcon = origin?.icon;
   return (
     <div className={cn("flex", outbound ? "justify-end" : "justify-start")}>
       <div
@@ -97,7 +135,7 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
           outbound ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted"
         )}
       >
-        {label ? (
+        {kindTag ? (
           <span
             className={cn(
               "flex items-center gap-1 text-xs font-medium",
@@ -105,7 +143,18 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
             )}
           >
             <KindIcon kind={message.kind} className="size-3" />
-            {label}
+            {kindTag}
+          </span>
+        ) : null}
+        {origin ? (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-xs font-medium",
+              outbound ? "text-primary-foreground/80" : "text-muted-foreground"
+            )}
+          >
+            {OriginIcon ? <OriginIcon className="size-3" /> : null}
+            {origin.label}
           </span>
         ) : null}
         <span className="whitespace-pre-wrap break-words">{message.text || "(sem texto)"}</span>
@@ -226,6 +275,17 @@ function ConversationThread({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2.5 border-b pb-3">
+        <Avatar>
+          <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+            {avatarLabel(senderNumber)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-semibold">{senderNumber}</span>
+          <span className="text-xs text-muted-foreground">Contato do WhatsApp</span>
+        </div>
+      </div>
       <div className="flex items-center justify-between gap-2">
         <Badge variant={escalated ? "destructive" : aiPaused ? "secondary" : "outline"}>
           {escalated
@@ -256,9 +316,23 @@ function ConversationThread({
               {loadingMore ? "Carregando..." : "Carregar mensagens antigas"}
             </Button>
           ) : null}
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
+          {messages.map((message, index) => {
+            const previous = messages[index - 1];
+            const showSeparator =
+              !previous || formatDateSeparator(message.created_at) !== formatDateSeparator(previous.created_at);
+            return (
+              <div key={message.id} className="flex flex-col gap-2">
+                {showSeparator ? (
+                  <div className="flex items-center justify-center py-1">
+                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {formatDateSeparator(message.created_at)}
+                    </span>
+                  </div>
+                ) : null}
+                <MessageBubble message={message} />
+              </div>
+            );
+          })}
         </>
       ) : null}
       <div className="flex flex-col gap-1.5 border-t pt-3">
@@ -266,8 +340,15 @@ function ConversationThread({
           placeholder="Responder manualmente..."
           value={replyText}
           onChange={(event) => setReplyText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendReply();
+            }
+          }}
           className="min-h-20"
         />
+        <p className="text-[11px] text-muted-foreground">Enter para enviar - Shift+Enter para nova linha</p>
         {sendError ? <FormStatus tone="error">{sendError}</FormStatus> : null}
         <Button onClick={sendReply} disabled={sending || !replyText.trim()} className="w-fit">
           {sending ? "Enviando..." : "Enviar"}
@@ -277,13 +358,22 @@ function ConversationThread({
   );
 }
 
-export function ConversationView({ instanceId }: { instanceId: string }) {
+export function ConversationView({
+  instanceId,
+  initialSender = null,
+}: {
+  instanceId: string;
+  /** Preselects a conversation on mount (e.g. arriving from the queue panel's "Abrir conversa"
+   * link, `?sender=`) - the thread doesn't need to already be in the loaded page, it's created
+   * lazily by the backend on first interaction same as any other conversation. */
+  initialSender?: string | null;
+}) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialSender);
 
   const loadPage = useCallback(
     (offset: number) => {
@@ -370,7 +460,11 @@ export function ConversationView({ instanceId }: { instanceId: string }) {
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Selecione uma conversa para ver o historico.</p>
+          <EmptyState
+            title="Selecione uma conversa"
+            description="Escolha um contato na lista ao lado para ver o historico e responder."
+            icon={MessageSquare}
+          />
         )}
       </div>
     </div>

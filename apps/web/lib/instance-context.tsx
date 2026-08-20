@@ -50,3 +50,11 @@ export function useOwnInstances() {
   if (!ctx) throw new Error("useOwnInstances must be used within OwnInstanceProvider");
   return ctx;
 }
+
+/** Same as `useOwnInstances`, but returns null instead of throwing when rendered outside
+ * `OwnInstanceProvider` - for shared chrome (AppShell) that renders in both the client `/app`
+ * section (wrapped in the provider) and the admin section (not wrapped, no "my own instances"
+ * concept there). */
+export function useOwnInstancesOptional() {
+  return useContext(OwnInstanceContext);
+}

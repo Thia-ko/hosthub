@@ -8,6 +8,7 @@ from app.core.deps import get_current_user, get_owned_instance, require_admin, r
 from app.core.security import hash_password
 from app.core.slug import slugify
 from app.db.session import get_db
+from app.models.attendance_queue import AttendanceQueue, QueueBasePriority
 from app.models.instance import Instance, InstanceStatus
 from app.models.instance_member import InstanceMember, InstanceMemberRole
 from app.models.user import User, UserRole
@@ -122,6 +123,15 @@ async def create_instance(
     db.add(instance)
     await db.flush()
     db.add(InstanceMember(instance_id=instance.id, user_id=client.id, role=InstanceMemberRole.OWNER))
+    db.add(
+        AttendanceQueue(
+            instance_id=instance.id,
+            name="Geral",
+            slug="geral",
+            base_priority=QueueBasePriority.NORMAL,
+            is_default=True,
+        )
+    )
     await db.commit()
     await db.refresh(instance)
 

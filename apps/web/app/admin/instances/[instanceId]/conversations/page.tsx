@@ -1,9 +1,21 @@
 "use client";
 
-import { ConversationView } from "@/components/conversation-view";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { ConversationView } from "@/components/inbox/conversation-view";
+import { LoadingState } from "@/components/state";
 import { useInstanceDetail } from "@/lib/instance-detail-context";
 
-export default function AdminInstanceConversationsPage() {
+function AdminInstanceConversationsContent() {
   const { instance } = useInstanceDetail();
-  return <ConversationView instanceId={instance.id} />;
+  const searchParams = useSearchParams();
+  return <ConversationView instanceId={instance.id} initialSender={searchParams.get("sender")} />;
+}
+
+export default function AdminInstanceConversationsPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <AdminInstanceConversationsContent />
+    </Suspense>
+  );
 }

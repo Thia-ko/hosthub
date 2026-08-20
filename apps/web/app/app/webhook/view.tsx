@@ -1,10 +1,10 @@
 "use client";
 
-import { WebhookInspector } from "@/components/webhook-inspector";
+import { WebhookInspector } from "@/components/n8n-bridge/webhook-inspector";
 import { Server } from "lucide-react";
-import { OutboundWebhooksPanel } from "@/components/outbound-webhooks-panel";
-import { ApiKeysPanel } from "@/components/api-keys-panel";
-import { ExternalApiDocs } from "@/components/external-api-docs";
+import { OutboundWebhooksPanel } from "@/components/n8n-bridge/outbound-webhooks-panel";
+import { ApiKeysPanel } from "@/components/n8n-bridge/api-keys-panel";
+import { ExternalApiDocs } from "@/components/n8n-bridge/external-api-docs";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
 import { useOwnInstances } from "@/lib/instance-context";

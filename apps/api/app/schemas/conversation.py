@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.conversation_message import MessageDirection, MessageKind
+from app.models.conversation_message import MessageDirection, MessageKind, MessageOrigin
 
 
 class ConversationMessageOut(BaseModel):
@@ -12,6 +12,7 @@ class ConversationMessageOut(BaseModel):
     kind: MessageKind
     text: str
     media_url: str | None
+    origin: MessageOrigin | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

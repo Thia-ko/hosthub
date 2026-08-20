@@ -208,6 +208,7 @@ export interface AiSettings {
 
 export type MessageDirection = "inbound" | "outbound";
 export type MessageKind = "text" | "audio" | "image";
+export type MessageOrigin = "ai" | "human" | "system" | "api" | "chatbot";
 
 export interface ConversationMessage {
   id: string;
@@ -215,6 +216,7 @@ export interface ConversationMessage {
   kind: MessageKind;
   text: string;
   media_url: string | null;
+  origin: MessageOrigin | null;
   created_at: string;
 }
 
@@ -360,4 +362,68 @@ export interface PublicPlatformStats {
   resolution_rate_pct: number | null;
   estimated_hours_saved: number;
   window_days: number;
+}
+
+export type QueueStatus = "queued" | "in_progress" | "on_hold" | "resolved";
+export type EscalationReason = "customer_request" | "ai_uncertain" | "ai_failure";
+export type QueuePriority = "normal" | "high" | "urgent";
+export type QueueSlaRisk = "ok" | "warning" | "critical";
+export type AgentAvailability = "online" | "busy" | "away" | "offline";
+
+export interface QueueItemAgent {
+  id: string;
+  full_name: string;
+}
+
+export interface QueueItemQueue {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface QueueItem {
+  sender_number: string;
+  queue_status: QueueStatus;
+  escalation_reason: EscalationReason | null;
+  ai_confidence: number | null;
+  priority: QueuePriority;
+  sla_risk: QueueSlaRisk;
+  wait_time_seconds: number;
+  queued_at: string | null;
+  assigned_at: string | null;
+  resolved_at: string | null;
+  assigned_agent: QueueItemAgent | null;
+  queue: QueueItemQueue | null;
+  last_message_preview: string;
+  last_message_at: string;
+}
+
+export interface QueueContext {
+  sender_number: string;
+  intent_summary: string | null;
+  escalation_reason: EscalationReason | null;
+  ai_confidence: number | null;
+  recent_messages: ConversationMessage[];
+}
+
+export interface AgentProfile {
+  user_id: string;
+  full_name: string;
+  status: AgentAvailability;
+}
+
+export type QueueBasePriority = "normal" | "high" | "urgent";
+
+export interface AttendanceQueue {
+  id: string;
+  name: string;
+  slug: string;
+  routing_hint: string | null;
+  keywords: string | null;
+  base_priority: QueueBasePriority;
+  color: string;
+  position: number;
+  is_default: boolean;
+  active: boolean;
+  created_at: string;
 }

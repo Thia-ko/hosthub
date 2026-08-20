@@ -1,7 +1,7 @@
 "use client";
 
 import { Server } from "lucide-react";
-import { ChatbotTreeEditor } from "@/components/chatbot-tree-editor";
+import { ChatbotTreeEditor } from "@/components/workflow-editor/chatbot-tree-editor";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
 

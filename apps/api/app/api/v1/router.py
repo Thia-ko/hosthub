@@ -5,6 +5,7 @@ from app.api.v1.routers import (
     ai_settings,
     analytics,
     api_keys,
+    attendance_queues,
     auth,
     campaigns,
     chatbot_nodes,
@@ -19,6 +20,7 @@ from app.api.v1.routers import (
     outbound_webhooks,
     prompt_templates,
     prompts,
+    queue,
     theme,
     webhook_events,
     whatsapp_connection,
@@ -47,4 +49,6 @@ api_router.include_router(knowledge_files.router)
 api_router.include_router(demo.router)
 api_router.include_router(external.router)
 api_router.include_router(chatbot_nodes.router)
+api_router.include_router(queue.router)
+api_router.include_router(attendance_queues.router)
 

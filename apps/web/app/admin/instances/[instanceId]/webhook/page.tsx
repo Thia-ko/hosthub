@@ -1,11 +1,11 @@
 "use client";
 
-import { WebhookInspector } from "@/components/webhook-inspector";
-import { WebhookIntegrationDocs } from "@/components/webhook-integration-docs";
-import { OutboundWebhooksPanel } from "@/components/outbound-webhooks-panel";
-import { RegenerateWebhookTokenButton } from "@/components/regenerate-webhook-token-button";
-import { ApiKeysPanel } from "@/components/api-keys-panel";
-import { ExternalApiDocs } from "@/components/external-api-docs";
+import { WebhookInspector } from "@/components/n8n-bridge/webhook-inspector";
+import { WebhookIntegrationDocs } from "@/components/n8n-bridge/webhook-integration-docs";
+import { OutboundWebhooksPanel } from "@/components/n8n-bridge/outbound-webhooks-panel";
+import { RegenerateWebhookTokenButton } from "@/components/n8n-bridge/regenerate-webhook-token-button";
+import { ApiKeysPanel } from "@/components/n8n-bridge/api-keys-panel";
+import { ExternalApiDocs } from "@/components/n8n-bridge/external-api-docs";
 import { useInstanceDetail } from "@/lib/instance-detail-context";
 
 export default function AdminInstanceWebhookPage() {
