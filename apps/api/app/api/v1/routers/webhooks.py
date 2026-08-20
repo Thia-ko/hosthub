@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from typing import Sequence
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
@@ -9,28 +9,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_instance_by_webhook_token
 from app.core.rate_limit import rate_limit_webhook_token
 from app.db.session import get_db
-from app.models.ai_assist_request import AiAssistRequest, AiAssistStatus
-from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
+from app.models.attendance_queue import AttendanceQueue
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance, InstanceStatus, WhatsAppProvider
-from app.models.satisfaction_response import SatisfactionResponse
 from app.models.webhook_event import WebhookEvent
 from app.schemas.instance_prompt import InstancePromptOut
-from app.services.ai_assist_budget import get_daily_limit, get_usage_today
-from app.services.ai_assist_provider import get_ai_assist_provider
-from app.services.chatbot import handle_message as handle_chatbot_message
+from app.services import ai_reply, csat
+from app.services.chatbot import try_reply as try_chatbot_reply
 from app.services.conversation_analyzer import maybe_trigger_analysis
 from app.services.conversation_threads import get_or_create_thread
-from app.services.csat import CSAT_THANKS_MESSAGE, parse_rating
-from app.services.escalation import customer_requests_handoff, split_escalation_tag
 from app.services.outbound_webhooks import MESSAGE_RECEIVED, THREAD_ESCALATED, dispatch_event
 from app.services.plans import get_features
-from app.services.prompt_content import get_current_prompt_content, get_current_prompt_version
+from app.services.prompt_content import get_current_prompt_version
+from app.services.queue import reopen_if_resolved, try_handoff
 from app.services.whatsapp_channel import (
     ParsedInboundMessage,
     WhatsAppChannelError,
     parse_inbound_message,
-    send_reply,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,75 +37,15 @@ _EXCLUDED_HEADERS = {"cookie", "authorization", "host", "connection", "content-l
 
 _MESSAGE_KIND_BY_MEDIA_KIND = {None: MessageKind.TEXT, "audio": MessageKind.AUDIO, "image": MessageKind.IMAGE}
 
-_HANDOFF_ACK_MESSAGE = "Entendido! Vou te transferir para um atendente humano, que vai continuar por aqui em breve."
 
-
-async def _maybe_capture_csat(db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage) -> bool:
-    """If this thread has an unanswered CSAT request pending and the message contains a 1-5
-    rating, records it and thanks the customer - skipping the normal AI reply for this message.
-    Returns True when it handled the message (caller should not run the auto-reply flow)."""
-    pending = await db.scalar(
-        select(SatisfactionResponse)
-        .where(
-            SatisfactionResponse.instance_id == instance.id,
-            SatisfactionResponse.sender_number == parsed.sender_number,
-            SatisfactionResponse.rating.is_(None),
-        )
-        .order_by(SatisfactionResponse.requested_at.desc())
-        .limit(1)
+async def _load_queues(db: AsyncSession, instance_id) -> list[AttendanceQueue]:
+    """All of an instance's configured queues (active and inactive), position-ordered - loaded
+    once per webhook call and threaded through routing/reopen/AI-reply so the request doesn't
+    re-query it per escalation trigger."""
+    result = await db.execute(
+        select(AttendanceQueue).where(AttendanceQueue.instance_id == instance_id).order_by(AttendanceQueue.position)
     )
-    if pending is None:
-        return False
-    rating = parse_rating(parsed.text)
-    if rating is None:
-        return False
-
-    pending.rating = rating
-    pending.response_text = parsed.text
-    pending.responded_at = datetime.now(timezone.utc)
-    await db.commit()
-
-    try:
-        await send_reply(instance, parsed.sender_number, CSAT_THANKS_MESSAGE, parsed.whatsbotmais_token)
-        db.add(
-            ConversationMessage(
-                instance_id=instance.id,
-                sender_number=parsed.sender_number,
-                direction=MessageDirection.OUTBOUND,
-                kind=MessageKind.TEXT,
-                text=CSAT_THANKS_MESSAGE,
-                origin=MessageOrigin.SYSTEM,
-            )
-        )
-        await db.commit()
-    except WhatsAppChannelError:
-        logger.exception("Failed to send CSAT thanks message for instance %s", instance.id)
-    return True
-
-
-async def _handoff_to_human(
-    db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
-) -> None:
-    """Sends the canned handoff acknowledgement, records it, and pauses+flags the thread as
-    needing human attention. No AI call involved - safe to run even without a configured
-    provider or remaining daily budget."""
-    await send_reply(instance, parsed.sender_number, _HANDOFF_ACK_MESSAGE, parsed.whatsbotmais_token)
-    db.add(
-        ConversationMessage(
-            instance_id=instance.id,
-            sender_number=parsed.sender_number,
-            direction=MessageDirection.OUTBOUND,
-            kind=MessageKind.TEXT,
-            text=_HANDOFF_ACK_MESSAGE,
-            origin=MessageOrigin.SYSTEM,
-        )
-    )
-    thread.ai_paused = True
-    thread.escalated = True
-    await db.commit()
-    logger.info(
-        "Instance %s: customer requested human handoff for %s, pausing AI", instance.id, parsed.sender_number
-    )
+    return list(result.scalars().all())
 
 
 def _channel_is_ready(instance: Instance, parsed: ParsedInboundMessage) -> bool:
@@ -126,118 +62,34 @@ def _channel_is_ready(instance: Instance, parsed: ParsedInboundMessage) -> bool:
 
 
 async def _maybe_auto_reply(
-    db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage, thread: ConversationThread
+    db: AsyncSession,
+    instance: Instance,
+    parsed: ParsedInboundMessage,
+    thread: ConversationThread,
+    queues: Sequence[AttendanceQueue],
 ) -> None:
     """Best-effort: generates and sends a WhatsApp reply for an inbound customer message.
-    Never raises - failures are logged so the webhook call always succeeds for the sender."""
+    Never raises - failures are logged so the webhook call always succeeds for the sender.
+    Delegates, in priority order, to `app.services.queue.try_handoff` (explicit human
+    request), `app.services.chatbot.try_reply` (deterministic tree) and
+    `app.services.ai_reply.try_reply` (AI provider) - the first one that claims the message
+    stops the chain. Everything below this router's own HTTP concerns (parsing, persistence,
+    channel readiness) now lives in the dedicated service each step belongs to."""
     if not _channel_is_ready(instance, parsed):
         return
     if thread.ai_paused:
         return
 
     try:
-        # Checked before the AI budget/provider gates below: a customer explicitly asking for a
-        # human should hand off even if the AI isn't configured or the daily budget is spent.
-        if parsed.media_kind != "audio" and customer_requests_handoff(parsed.text):
-            await _handoff_to_human(db, instance, parsed, thread)
+        if await try_handoff(db, instance, parsed, thread, queues):
             return
 
         features = get_features(instance)
 
-        # Deterministic (non-AI) chatbot takes priority over the AI path when enabled and a
-        # tree is configured - text-only, since keyword/menu matching has nothing to match
-        # against a bare audio/image message (the AI path below still handles those via
-        # transcription/vision when ai_enabled).
-        if features.chatbot_enabled and parsed.media_kind is None:
-            chatbot_reply = await handle_chatbot_message(db, instance.id, thread, parsed.text)
-            if chatbot_reply is not None:
-                await send_reply(instance, parsed.sender_number, chatbot_reply.text, parsed.whatsbotmais_token)
-                db.add(
-                    ConversationMessage(
-                        instance_id=instance.id,
-                        sender_number=parsed.sender_number,
-                        direction=MessageDirection.OUTBOUND,
-                        kind=MessageKind.TEXT,
-                        text=chatbot_reply.text,
-                        origin=MessageOrigin.CHATBOT,
-                    )
-                )
-                thread.chatbot_node_id = chatbot_reply.next_node_id
-                await db.commit()
-                return
-
-        if not features.ai_enabled:
-            logger.info("Instance %s has AI disabled for its plan; skipping auto-reply", instance.id)
+        if await try_chatbot_reply(db, instance, parsed, thread, features):
             return
 
-        used_today = await get_usage_today(db, instance.id)
-        if used_today >= get_daily_limit(instance):
-            logger.warning("Instance %s hit its daily AI assist budget; skipping auto-reply", instance.id)
-            return
-
-        provider = await get_ai_assist_provider(db)
-        if not provider.is_configured:
-            logger.warning("AI assist provider not configured; skipping auto-reply for instance %s", instance.id)
-            return
-
-        system_prompt = await get_current_prompt_content(db, instance)
-        if not system_prompt:
-            logger.warning("Instance %s has no saved prompt; skipping auto-reply", instance.id)
-            return
-
-        image_url: str | None = None
-        log_prefix = "[atendimento]"
-        message_text = parsed.text
-        if parsed.media_kind == "audio":
-            assert parsed.media_url is not None
-            message_text = await provider.transcribe(parsed.media_url)
-            log_prefix = "[atendimento-audio]"
-        elif parsed.media_kind == "image":
-            image_url = parsed.media_url
-            message_text = parsed.text or "(imagem sem legenda)"
-            log_prefix = "[atendimento-imagem]"
-
-        # Re-checked here (in addition to the early text/image-caption check above) because an
-        # audio message's handoff request only becomes visible after transcription.
-        if parsed.media_kind == "audio" and customer_requests_handoff(message_text):
-            await _handoff_to_human(db, instance, parsed, thread)
-            return
-
-        reply, prompt_tokens, completion_tokens = await provider.reply(
-            system_prompt, [], message_text, image_url=image_url
-        )
-        reply, escalate = split_escalation_tag(reply)
-
-        await send_reply(instance, parsed.sender_number, reply, parsed.whatsbotmais_token)
-
-        db.add(
-            ConversationMessage(
-                instance_id=instance.id,
-                sender_number=parsed.sender_number,
-                direction=MessageDirection.OUTBOUND,
-                kind=MessageKind.TEXT,
-                text=reply,
-                origin=MessageOrigin.AI,
-            )
-        )
-
-        db.add(
-            AiAssistRequest(
-                instance_id=instance.id,
-                user_id=instance.created_by_admin_id,
-                instruction=f"{log_prefix} {message_text}",
-                suggested_content=reply,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=prompt_tokens + completion_tokens,
-                status=AiAssistStatus.DISCARDED,
-            )
-        )
-        if escalate:
-            thread.ai_paused = True
-            thread.escalated = True
-            logger.info("Instance %s: AI escalated conversation with %s", instance.id, parsed.sender_number)
-        await db.commit()
+        await ai_reply.try_reply(db, instance, parsed, thread, queues, features)
     except WhatsAppChannelError:
         logger.exception("Failed to send WhatsApp reply for instance %s", instance.id)
     except Exception:  # noqa: BLE001 - webhook must never fail because of the reply pipeline
@@ -263,6 +115,7 @@ async def receive_webhook(
 
     parsed = parse_inbound_message(payload) if isinstance(payload, dict) else None
     thread: ConversationThread | None = None
+    queues: list[AttendanceQueue] = []
     if parsed is not None:
         db.add(
             ConversationMessage(
@@ -277,6 +130,8 @@ async def receive_webhook(
         thread = await get_or_create_thread(db, instance.id, parsed.sender_number)
         if parsed.whatsbotmais_token:
             thread.last_whatsbotmais_token = parsed.whatsbotmais_token
+        queues = await _load_queues(db, instance.id)
+        await reopen_if_resolved(db, thread, queues)
     await db.commit()
 
     if parsed is not None and thread is not None:
@@ -286,10 +141,10 @@ async def receive_webhook(
             MESSAGE_RECEIVED,
             {"sender_number": parsed.sender_number, "text": parsed.text, "media_kind": parsed.media_kind},
         )
-        csat_handled = await _maybe_capture_csat(db, instance, parsed)
+        csat_handled = await csat.try_capture(db, instance, parsed)
         if not csat_handled:
             was_escalated = thread.escalated
-            await _maybe_auto_reply(db, instance, parsed, thread)
+            await _maybe_auto_reply(db, instance, parsed, thread, queues)
             if thread.escalated and not was_escalated:
                 background_tasks.add_task(
                     dispatch_event, instance.id, THREAD_ESCALATED, {"sender_number": parsed.sender_number}

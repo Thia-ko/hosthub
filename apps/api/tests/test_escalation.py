@@ -31,28 +31,50 @@ def test_empty_text_does_not_trigger_handoff():
 
 
 def test_strips_leading_escalation_tag_and_reports_true():
-    text, escalate = split_escalation_tag("[ESCALAR] Vou te transferir para um atendente humano.")
+    text, escalate, confidence, queue_slug = split_escalation_tag(
+        "[ESCALAR] Vou te transferir para um atendente humano."
+    )
 
     assert text == "Vou te transferir para um atendente humano."
     assert escalate is True
+    assert confidence is None
+    assert queue_slug is None
 
 
 def test_reply_without_tag_is_returned_unchanged():
-    text, escalate = split_escalation_tag("Sim, atendemos de segunda a sabado.")
+    text, escalate, confidence, queue_slug = split_escalation_tag("Sim, atendemos de segunda a sabado.")
 
     assert text == "Sim, atendemos de segunda a sabado."
     assert escalate is False
+    assert confidence is None
+    assert queue_slug is None
 
 
 def test_tag_must_be_at_the_start_not_just_present_anywhere():
-    text, escalate = split_escalation_tag("Nao sei, mas o time pode usar [ESCALAR] se precisar.")
+    text, escalate, confidence, queue_slug = split_escalation_tag(
+        "Nao sei, mas o time pode usar [ESCALAR] se precisar."
+    )
 
     assert text == "Nao sei, mas o time pode usar [ESCALAR] se precisar."
     assert escalate is False
+    assert confidence is None
+    assert queue_slug is None
 
 
 def test_tolerates_leading_whitespace_before_the_tag():
-    text, escalate = split_escalation_tag("   [ESCALAR]   Um momento, vou chamar alguem.")
+    text, escalate, confidence, queue_slug = split_escalation_tag("   [ESCALAR]   Um momento, vou chamar alguem.")
 
     assert text == "Um momento, vou chamar alguem."
     assert escalate is True
+    assert confidence is None
+    assert queue_slug is None
+
+def test_strips_confidence_and_queue_slug_when_present():
+    text, escalate, confidence, queue_slug = split_escalation_tag(
+        "[ESCALAR]:72:suporte-tecnico Vou te transferir para o suporte tecnico."
+    )
+
+    assert text == "Vou te transferir para o suporte tecnico."
+    assert escalate is True
+    assert confidence == 72
+    assert queue_slug == "suporte-tecnico"

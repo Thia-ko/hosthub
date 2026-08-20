@@ -289,7 +289,7 @@ async def test_maybe_auto_reply_sends_chatbot_greeting_on_first_contact(instance
     async with async_session() as db:
         db_instance = await db.get(Instance, instance.id)
         db_thread = await db.get(ConversationThread, thread.id)
-        await _maybe_auto_reply(db, db_instance, parsed, db_thread)
+        await _maybe_auto_reply(db, db_instance, parsed, db_thread, queues=[])
 
     assert len(sent_calls) == 1
     assert sent_calls[0][0] == "5511999999999"
@@ -326,7 +326,7 @@ async def test_maybe_auto_reply_skips_chatbot_when_feature_disabled(instance, mo
     async with async_session() as db:
         db_instance = await db.get(Instance, instance.id)
         db_thread = await db.get(ConversationThread, thread.id)
-        await _maybe_auto_reply(db, db_instance, parsed, db_thread)
+        await _maybe_auto_reply(db, db_instance, parsed, db_thread, queues=[])
 
     # No AI provider is configured in this test environment either, so nothing should be sent
     # at all - the important assertion is that the chatbot path specifically was not taken.

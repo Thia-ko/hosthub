@@ -1,5 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
+from typing import Sequence
 
 import httpx
 from fastapi import Depends
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.services.ai_settings import get_effective_ai_settings
-from app.services.escalation import ESCALATION_TAG
+from app.services.escalation import EscalationQueueOption, build_escalation_suffix
 from app.utils.json_utils import safe_parse_json
 
 SYSTEM_PROMPT = (
@@ -26,13 +27,6 @@ SYSTEM_PROMPT = (
     "Nao inclua comentarios, explicacoes ou marcacao de codigo, apenas o prompt final."
 )
 
-ESCALATION_SUFFIX = (
-    "\n\n---\n"
-    "Se voce nao tiver certeza de como responder, ou o assunto for sensivel (reembolso, reclamacao "
-    "grave, algo que foge do que voce sabe responder com as informacoes acima), comece sua resposta "
-    f"com a tag {ESCALATION_TAG} seguida de uma mensagem curta e educada avisando que um atendente "
-    "humano vai continuar o atendimento. So use essa tag quando realmente necessario."
-)
 
 KNOWLEDGE_IMAGE_SYSTEM_PROMPT = (
     "Voce descreve imagens de forma objetiva e detalhada para servir de material de referencia "
@@ -59,10 +53,15 @@ class AiAssistProvider(ABC):
         user_message: str,
         image_url: str | None = None,
         max_tokens: int | None = None,
+        escalation_queues: Sequence[EscalationQueueOption] = (),
     ) -> tuple[str, int, int]:
         """Roleplays the agent for a sandbox test or a real customer message. When `image_url` is
         set, the message is sent as multimodal content (requires a vision-capable model). When
-        `max_tokens` is set, caps the length of the generated response.
+        `max_tokens` is set, caps the length of the generated response. `escalation_queues`, when
+        non-empty, lists the instance's configured queues so the escalation instruction
+        (`app.services.escalation.build_escalation_suffix`) asks the model to pick one by slug;
+        empty (the default) keeps the plain confidence-only tag, e.g. for the prompt sandbox/demo
+        callers that have no instance-specific queues to offer.
         Returns (reply, prompt_tokens, completion_tokens)."""
 
     @abstractmethod
@@ -130,6 +129,7 @@ class OpenAiCompatibleProvider(AiAssistProvider):
         user_message: str,
         image_url: str | None = None,
         max_tokens: int | None = None,
+        escalation_queues: Sequence[EscalationQueueOption] = (),
     ) -> tuple[str, int, int]:
         user_content: str | list[dict] = user_message
         if image_url:
@@ -138,7 +138,7 @@ class OpenAiCompatibleProvider(AiAssistProvider):
                 {"type": "image_url", "image_url": {"url": image_url}},
             ]
         messages = [
-            {"role": "system", "content": system_prompt + ESCALATION_SUFFIX},
+            {"role": "system", "content": system_prompt + build_escalation_suffix(escalation_queues)},
             *history,
             {"role": "user", "content": user_content},
         ]

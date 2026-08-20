@@ -12,7 +12,7 @@ class SatisfactionResponse(Base):
     """One CSAT request/response cycle for a customer thread. Created when
     app.services.csat sends the satisfaction question after the thread has gone quiet
     following our last reply; `rating`/`response_text`/`responded_at` stay null until the
-    customer answers (app.api.v1.routers.webhooks._maybe_capture_csat)."""
+    customer answers (app.services.csat.try_capture)."""
 
     __tablename__ = "satisfaction_responses"
 

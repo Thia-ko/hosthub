@@ -3,13 +3,14 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import async_session
 from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
 from app.models.instance import Instance
 from app.models.satisfaction_response import SatisfactionResponse
-from app.services.whatsapp_channel import WhatsAppChannelError, send_reply
+from app.services.whatsapp_channel import ParsedInboundMessage, WhatsAppChannelError, send_reply
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,58 @@ def parse_rating(text: str) -> int | None:
     replying "5 estrelas!! otimo" still counts)."""
     match = _RATING_RE.search(text)
     return int(match.group()) if match else None
+
+
+# --- Inbound: capturing the customer's rating -------------------------------------------------
+
+
+async def try_capture(db: AsyncSession, instance: Instance, parsed: ParsedInboundMessage) -> bool:
+    """Checked first in `app.api.v1.routers.webhooks.receive_webhook`, before the auto-reply
+    pipeline (`app.services.queue.try_handoff` / `app.services.chatbot.try_reply` /
+    `app.services.ai_reply.try_reply`): if this thread has an unanswered CSAT request pending
+    (see `maybe_request_feedback` below) and the message contains a 1-5 rating, records it and
+    thanks the customer. Returns True when it handled the message (the caller should skip the
+    normal auto-reply flow for it)."""
+    pending = await db.scalar(
+        select(SatisfactionResponse)
+        .where(
+            SatisfactionResponse.instance_id == instance.id,
+            SatisfactionResponse.sender_number == parsed.sender_number,
+            SatisfactionResponse.rating.is_(None),
+        )
+        .order_by(SatisfactionResponse.requested_at.desc())
+        .limit(1)
+    )
+    if pending is None:
+        return False
+    rating = parse_rating(parsed.text)
+    if rating is None:
+        return False
+
+    pending.rating = rating
+    pending.response_text = parsed.text
+    pending.responded_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    try:
+        await send_reply(instance, parsed.sender_number, CSAT_THANKS_MESSAGE, parsed.whatsbotmais_token)
+        db.add(
+            ConversationMessage(
+                instance_id=instance.id,
+                sender_number=parsed.sender_number,
+                direction=MessageDirection.OUTBOUND,
+                kind=MessageKind.TEXT,
+                text=CSAT_THANKS_MESSAGE,
+                origin=MessageOrigin.SYSTEM,
+            )
+        )
+        await db.commit()
+    except WhatsAppChannelError:
+        logger.exception("Failed to send CSAT thanks message for instance %s", instance.id)
+    return True
+
+
+# --- Outbound: proactively asking --------------------------------------------------------------
 
 
 async def maybe_request_feedback() -> None:

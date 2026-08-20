@@ -2,7 +2,8 @@
 instance, an alternative to the LLM auto-reply for cost-sensitive plans - see
 app.services.plans.InstanceFeatures.chatbot_enabled. Tree traversal position is tracked per
 conversation on ConversationThread.chatbot_node_id. Wired into the inbound webhook flow by
-app.api.v1.routers.webhooks._maybe_auto_reply, which tries this before the AI path."""
+app.api.v1.routers.webhooks._maybe_auto_reply via `try_reply` below, which is tried before the
+AI path (app.services.ai_reply)."""
 
 import uuid
 from dataclasses import dataclass
@@ -11,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chatbot_node import ChatbotNode
+from app.models.conversation_message import ConversationMessage, MessageDirection, MessageKind, MessageOrigin
 from app.models.conversation_thread import ConversationThread
+from app.models.instance import Instance
+from app.services.plans import InstanceFeatures
+from app.services.whatsapp_channel import ParsedInboundMessage, send_reply
 from app.utils.json_utils import safe_parse_json_array
 
 # Reserved phrases that always jump back to the root menu, from anywhere in the tree - lets a
@@ -104,3 +109,37 @@ async def handle_message(
     text_out = matched.message + (f"\n\n{format_menu(grandchildren)}" if grandchildren else "")
     next_node_id = matched.id if grandchildren else None
     return ChatbotReply(text=text_out, next_node_id=next_node_id)
+
+
+async def try_reply(
+    db: AsyncSession,
+    instance: Instance,
+    parsed: ParsedInboundMessage,
+    thread: ConversationThread,
+    features: InstanceFeatures,
+) -> bool:
+    """Second step of `app.api.v1.routers.webhooks._maybe_auto_reply`'s auto-reply pipeline: the
+    deterministic chatbot tree takes priority over the AI path when enabled and configured -
+    text-only, since keyword/menu matching has nothing to match against a bare audio/image
+    message (the AI path still handles those via transcription/vision when ai_enabled). Sends
+    and persists the reply and returns True if a node matched and advanced the conversation;
+    False to fall through to `app.services.ai_reply.try_reply`."""
+    if not (features.chatbot_enabled and parsed.media_kind is None):
+        return False
+    reply = await handle_message(db, instance.id, thread, parsed.text)
+    if reply is None:
+        return False
+    await send_reply(instance, parsed.sender_number, reply.text, parsed.whatsbotmais_token)
+    db.add(
+        ConversationMessage(
+            instance_id=instance.id,
+            sender_number=parsed.sender_number,
+            direction=MessageDirection.OUTBOUND,
+            kind=MessageKind.TEXT,
+            text=reply.text,
+            origin=MessageOrigin.CHATBOT,
+        )
+    )
+    thread.chatbot_node_id = reply.next_node_id
+    await db.commit()
+    return True
