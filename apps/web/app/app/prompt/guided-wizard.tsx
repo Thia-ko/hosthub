@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -119,18 +119,18 @@ function appendLine(existing: string, sentence: string): string {
 }
 
 /** Unified, non-technical hub for building the agent's prompt: all sections the auto-generation
- * pipeline fills from real conversations are stacked vertically (no tab/step navigation to get
- * lost in). On desktop a small floating button on the right (sticky, tracks scroll) reveals the
- * section list on hover/focus - a compact jump menu, not a permanent rail, since the vertical
- * stack is already the primary navigation (plain scrolling). Hidden entirely on mobile, where
- * screen space doesn't afford a floating menu and scrolling is the only way through anyway.
- * A couple of sections (tone, business info) also offer small structured pickers that compose a
- * suggested sentence into the free-text box on click, for people who don't know what to write
- * from a blank page - every section still boils down to plain text underneath, so nothing here
- * is mandatory. The last "Prompt completo" section is the exact text that gets saved: normally
- * kept in sync with the sections above, but directly editable too (replaces the old separate
- * "Avancado" mode - there's only one view now). Seeds itself once from `initialContent` -
- * callers remount it (via `key`) when the underlying prompt version changes. */
+ * pipeline fills from real conversations are stacked vertically (no tab navigation to get lost
+ * in). On desktop a numbered stepper rail on the right (sticky, tracks scroll) mirrors that
+ * order: each step shows its index until the section has content, then a checkmark, so progress
+ * is legible at a glance; clicking a step scrolls to it. Hidden entirely on mobile, where
+ * scrolling through the stack directly is the only navigation anyway. A couple of sections
+ * (tone, business info) also offer small structured pickers that compose a suggested sentence
+ * into the free-text box on click, for people who don't know what to write from a blank page -
+ * every section still boils down to plain text underneath, so nothing here is mandatory. The
+ * last "Prompt completo" section is the exact text that gets saved: normally kept in sync with
+ * the sections above, but directly editable too (replaces the old separate "Avancado" mode -
+ * there's only one view now). Seeds itself once from `initialContent` - callers remount it (via
+ * `key`) when the underlying prompt version changes. */
 export function GuidedWizard({
   initialContent,
   onAssembledChange,
@@ -228,36 +228,61 @@ export function GuidedWizard({
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <nav className="hidden lg:sticky lg:top-4 lg:order-2 lg:flex lg:w-44 lg:shrink-0 lg:flex-col lg:items-end lg:gap-1.5">
-        {NAV_ITEMS.map((item, index) => {
-          const isActive = activeKey === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => scrollToSection(item.key)}
-              style={{ marginRight: isActive ? 0 : index * 6 }}
-              className={cn(
-                "w-full rounded-lg border px-3 py-2 text-left text-xs backdrop-blur-md transition-all duration-200 ease-out",
-                item.special && "mt-2",
-                isActive
-                  ? item.special
-                    ? "border-primary/50 bg-primary/10 font-medium text-foreground shadow-md"
-                    : "border-border/60 bg-background/80 font-medium text-foreground shadow-md"
-                  : item.special
-                    ? "border-primary/25 bg-primary/5 text-muted-foreground/70 shadow-sm hover:bg-primary/10 hover:text-foreground"
-                    : "border-border/15 bg-background/25 text-muted-foreground/60 shadow-sm hover:bg-background/45 hover:text-foreground"
-              )}
-            >
-              <span className="flex items-center gap-1.5">
-                <span className="truncate">{item.title}</span>
-                {isFilled(item.key) ? (
-                  <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />
+      <nav className="hidden lg:sticky lg:top-4 lg:order-2 lg:block lg:w-56 lg:shrink-0">
+        <ol className="flex flex-col">
+          {NAV_ITEMS.map((item, index) => {
+            const isActive = activeKey === item.key;
+            const filled = isFilled(item.key);
+            const isLast = index === NAV_ITEMS.length - 1;
+            return (
+              <li key={item.key} className="relative">
+                {!isLast ? (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "absolute left-[11px] top-6 h-[calc(100%-4px)] w-px",
+                      filled ? "bg-primary/40" : "bg-border"
+                    )}
+                  />
                 ) : null}
-              </span>
-            </button>
-          );
-        })}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(item.key)}
+                  className="group flex w-full items-start gap-3 rounded-md py-1.5 pr-2 text-left transition-colors hover:bg-accent/40"
+                >
+                  <span
+                    className={cn(
+                      "relative z-10 mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full border text-[10px] font-medium transition-all",
+                      item.special
+                        ? "border-primary bg-primary/10 text-primary"
+                        : filled
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground",
+                      isActive && !item.special && "ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
+                      isActive && !filled && !item.special && "border-primary text-primary"
+                    )}
+                  >
+                    {item.special ? (
+                      <Sparkles className="size-3" />
+                    ) : filled ? (
+                      <Check className="size-3" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "pt-1 text-xs leading-tight transition-colors",
+                      isActive ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                    )}
+                  >
+                    {item.title}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       </nav>
 
       <div className="flex flex-1 flex-col gap-4">
