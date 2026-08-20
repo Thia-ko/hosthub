@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronRight,
   HelpCircle,
-  Paperclip,
   Pencil,
   Plus,
   ScrollText,
@@ -25,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AiBrainPreview } from "@/components/ai-brain-preview";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { KnowledgeFileManager } from "@/components/knowledge-file-manager";
 import { EmptyState, ErrorState, FormStatus, LoadingState } from "@/components/state";
 import { apiFetch, errorMessage, GENERIC_SAVE_ERROR_MESSAGE } from "@/lib/api-client";
 import { useAsyncData } from "@/lib/use-async-data";
@@ -321,7 +319,6 @@ function InstanceData({ instanceId }: { instanceId: string }) {
 
   const [generating, setGenerating] = useState(false);
   const [generateStatus, setGenerateStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
-  const [knowledgeFileCount, setKnowledgeFileCount] = useState(0);
 
   const byCategory = useMemo(() => {
     const grouped: Record<string, ExtractedData[]> = { business_info: [], products_services: [], policies: [] };
@@ -462,10 +459,6 @@ function InstanceData({ instanceId }: { instanceId: string }) {
             reloadFaqs();
           }}
         />
-      </Section>
-
-      <Section title="Arquivos de conhecimento" icon={Paperclip} count={knowledgeFileCount} defaultOpen={false}>
-        <KnowledgeFileManager instanceId={instanceId} onCountChange={setKnowledgeFileCount} />
       </Section>
 
       <Section title="Padroes de atendimento" icon={Users} count={totalPatterns.length} defaultOpen={false}>

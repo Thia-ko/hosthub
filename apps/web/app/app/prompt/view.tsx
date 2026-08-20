@@ -12,6 +12,7 @@ import { useOwnInstances } from "@/lib/instance-context";
 import type { PromptVersionDetail } from "@/lib/types";
 import { AiAssistPanel } from "./ai-assist-panel";
 import { GuidedWizard } from "./guided-wizard";
+import { KnowledgeFileManager } from "@/components/knowledge-file-manager";
 import { PendingPromptBanner } from "./pending-prompt-banner";
 import { PromptSandbox } from "@/components/prompt-sandbox";
 import { PENDING_TEMPLATE_KEY } from "@/lib/constants";
@@ -114,6 +115,17 @@ export function PromptEditorView({ instanceId }: { instanceId: string }) {
             {current ? `Versao atual: ${current.version_number}` : "Nenhuma versao salva ainda."}
           </p>
           <GuidedWizard key={current?.id ?? "new"} initialContent={content} onAssembledChange={setContent} />
+          <div className="rounded-lg border p-4">
+            <div className="mb-3 flex flex-col gap-1">
+              <h2 className="text-sm font-semibold">Arquivos de conhecimento</h2>
+              <p className="text-sm text-muted-foreground">
+                Envie documentos, imagens, áudios ou vídeos como material de referência extra para o agente.
+                Deixe em <strong>automático</strong> para o agente decidir sozinho quando usar, ou marque como{" "}
+                <strong>manual</strong> e ative &quot;usar na próxima geração&quot; para um caso pontual.
+              </p>
+            </div>
+            <KnowledgeFileManager instanceId={instanceId} />
+          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="changeNote">Nota da alteracao (opcional)</Label>
             <Input id="changeNote" value={changeNote} onChange={(event) => setChangeNote(event.target.value)} />
