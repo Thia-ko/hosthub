@@ -57,3 +57,14 @@ export function randomId(): string {
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
+
+/** Formats a wait/duration in seconds as a compact human string ("45s", "12min", "2h05") -
+ * shared by the queue Kanban cards and the dashboard's live queue snapshot, both driven by
+ * `QueueItem.wait_time_seconds`. */
+export function formatWait(seconds: number): string {
+  if (seconds < 60) return `${Math.max(0, Math.round(seconds))}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}min`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h${String(minutes % 60).padStart(2, "0")}`;
+}

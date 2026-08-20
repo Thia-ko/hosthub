@@ -166,6 +166,7 @@ export interface DailyCount {
 export interface DashboardSummary {
   date: string;
   total_messages: number;
+  active_conversations: number;
   messages_by_hour: { hour: number; count: number }[];
   messages_last_7_days: DailyCount[];
   ai_tokens_last_7_days: DailyCount[];

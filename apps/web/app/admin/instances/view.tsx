@@ -9,7 +9,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useAsyncData } from "@/lib/use-async-data";
 import type { Instance } from "@/lib/types";
 import { NewInstanceDialog } from "./new-instance-dialog";
-import { StatusBadge } from "./status-badge";
+import { StatusBadge } from "@/components/instance-status-badge";
 
 export default function AdminInstancesView() {
   const { data: instances, error, loading, reload } = useAsyncData(() => apiFetch<Instance[]>("/instances"), []);

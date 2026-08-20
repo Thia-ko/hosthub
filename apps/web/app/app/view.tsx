@@ -32,7 +32,7 @@ export default function ClientHomeView() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">Sua IA</h1>
-      <InstanceDashboard instanceId={selectedId} promptHref="/app/prompt" />
+      <InstanceDashboard instanceId={selectedId} promptHref="/app/prompt" queueHref="/app/filas" />
     </div>
   );
 }

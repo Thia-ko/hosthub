@@ -9,7 +9,7 @@ import { useAsyncData } from "@/lib/use-async-data";
 import { InstanceDetailProvider } from "@/lib/instance-detail-context";
 import { cn } from "@/lib/utils";
 import type { InstanceDetail } from "@/lib/types";
-import { StatusBadge } from "../status-badge";
+import { StatusBadge } from "@/components/instance-status-badge";
 
 const TABS = [
   { href: "", label: "Geral" },

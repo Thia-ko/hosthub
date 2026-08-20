@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { apiFetch, errorMessage, GENERIC_LOAD_ERROR_MESSAGE, GENERIC_SAVE_ERROR_MESSAGE } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
+import { cn, formatWait } from "@/lib/utils";
 import type {
   AgentAvailability,
   AgentProfile,
@@ -89,14 +89,6 @@ const AGENT_STATUS_OPTIONS: AgentAvailability[] = ["online", "busy", "away", "of
 
 function isAgentAvailability(value: string): value is AgentAvailability {
   return value === "online" || value === "busy" || value === "away" || value === "offline";
-}
-
-function formatWait(seconds: number): string {
-  if (seconds < 60) return `${Math.max(0, Math.round(seconds))}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}min`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h${String(minutes % 60).padStart(2, "0")}`;
 }
 
 function QueueCard({

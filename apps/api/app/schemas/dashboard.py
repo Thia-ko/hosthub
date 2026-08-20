@@ -16,6 +16,7 @@ class DailyCount(BaseModel):
 class DashboardSummary(BaseModel):
     date: date_type
     total_messages: int
+    active_conversations: int
     messages_by_hour: list[HourlyCount]
     messages_last_7_days: list[DailyCount]
     ai_tokens_last_7_days: list[DailyCount]

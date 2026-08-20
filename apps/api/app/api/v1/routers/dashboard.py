@@ -111,6 +111,19 @@ async def get_summary(
     messages_by_hour = [HourlyCount(hour=h, count=counts_by_hour.get(h, 0)) for h in range(24)]
     total_messages = sum(counts_by_hour.values())
 
+    # Distinct customers who messaged in the same window, not the message count above - e.g. one
+    # customer sending 5 messages today is one active conversation, not five.
+    active_conversations = (
+        await db.execute(
+            select(func.count(func.distinct(ConversationMessage.sender_number))).where(
+                ConversationMessage.instance_id == instance.id,
+                ConversationMessage.direction == MessageDirection.INBOUND,
+                ConversationMessage.created_at >= range_start,
+                ConversationMessage.created_at < range_end,
+            )
+        )
+    ).scalar_one()
+
     prompt_versions_count = (
         await db.execute(
             select(func.count()).select_from(PromptVersion).where(PromptVersion.instance_id == instance.id)
@@ -133,6 +146,7 @@ async def get_summary(
     return DashboardSummary(
         date=target_date,
         total_messages=total_messages,
+        active_conversations=active_conversations,
         messages_by_hour=messages_by_hour,
         messages_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_messages],
         ai_tokens_last_7_days=[DailyCount(date=d, count=c) for d, c in daily_tokens],

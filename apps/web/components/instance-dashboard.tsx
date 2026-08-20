@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { Bot, FileText, MessageSquare, Sparkles, Star } from "lucide-react";
+import { Bot, FileText, MessageSquare, Sparkles, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/stat-card";
 import { Sparkline } from "@/components/sparkline";
+import { QueueSnapshotCard } from "@/components/inbox/queue-snapshot-card";
 import { ErrorState, LoadingState } from "@/components/state";
 import { apiFetch } from "@/lib/api-client";
 import { useAsyncData } from "@/lib/use-async-data";
@@ -21,7 +22,15 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function InstanceDashboard({ instanceId, promptHref }: { instanceId: string; promptHref?: string }) {
+export function InstanceDashboard({
+  instanceId,
+  promptHref,
+  queueHref,
+}: {
+  instanceId: string;
+  promptHref?: string;
+  queueHref?: string;
+}) {
   const {
     data: summary,
     error,
@@ -91,6 +100,11 @@ export function InstanceDashboard({ instanceId, promptHref }: { instanceId: stri
             <p className="text-sm text-muted-foreground">Sem conversas no periodo</p>
           )}
         </StatCard>
+        <StatCard title="Conversas ativas hoje" icon={Users}>
+          <p className="text-2xl font-semibold">{summary.active_conversations}</p>
+          <p className="text-xs text-muted-foreground">clientes distintos que mandaram mensagem hoje</p>
+        </StatCard>
+        {queueHref ? <QueueSnapshotCard instanceId={instanceId} queueHref={queueHref} /> : null}
       </div>
 
       <Card>
