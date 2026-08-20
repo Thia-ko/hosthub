@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { List } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +84,11 @@ const FULL_TEXT_KEY = "prompt-completo" as const;
 type NavKey = SectionKey | typeof FULL_TEXT_KEY;
 
 const NAV_KEYS: NavKey[] = [...SECTIONS.map((s) => s.key), FULL_TEXT_KEY];
+
+const NAV_ITEMS: { key: NavKey; title: string; special?: boolean }[] = [
+  ...SECTIONS.map((s) => ({ key: s.key as NavKey, title: s.title })),
+  { key: FULL_TEXT_KEY, title: "Prompt completo", special: true },
+];
 
 const FORMALITY_OPTIONS = ["Muito informal", "Informal", "Neutro", "Formal", "Muito formal"] as const;
 
@@ -216,57 +222,43 @@ export function GuidedWizard({
     updateAnswer("negocio", appendLine(answers.negocio, `${parts.join(". ")}.`));
   }
 
-  function navButtonClass(key: NavKey): string {
-    return cn(
-      "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors duration-150",
-      activeKey === key
-        ? "bg-accent/60 font-medium text-foreground"
-        : "font-normal text-muted-foreground/70 hover:bg-accent/30 hover:text-foreground"
-    );
+  function isFilled(key: NavKey): boolean {
+    return key === FULL_TEXT_KEY ? fullText.trim().length > 0 : Boolean(answers[key as SectionKey]?.trim());
   }
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-      <div className="hidden lg:sticky lg:top-4 lg:order-2 lg:block lg:shrink-0">
-        <div className="group/nav relative inline-block">
-          <button
-            type="button"
-            aria-label="Navegar entre secoes do prompt"
-            className="flex size-9 items-center justify-center rounded-full border border-border/40 bg-background text-muted-foreground shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:border-border focus-visible:text-foreground"
-          >
-            <List className="size-4" />
-          </button>
-          <nav
-            className={cn(
-              "invisible absolute right-0 top-full z-20 flex w-56 origin-top-right scale-95 flex-col gap-0.5 rounded-lg border border-border/40 bg-popover p-1.5 opacity-0 shadow-lg transition-[opacity,transform,visibility] duration-150",
-              "group-hover/nav:visible group-hover/nav:scale-100 group-hover/nav:opacity-100",
-              "group-focus-within/nav:visible group-focus-within/nav:scale-100 group-focus-within/nav:opacity-100"
-            )}
-          >
-            {SECTIONS.map((section) => (
-              <button
-                key={section.key}
-                type="button"
-                onClick={() => scrollToSection(section.key)}
-                className={navButtonClass(section.key)}
-              >
-                {section.title}
-                {answers[section.key]?.trim() ? (
+      <nav className="hidden lg:sticky lg:top-4 lg:order-2 lg:flex lg:w-44 lg:shrink-0 lg:flex-col lg:items-end lg:gap-1.5">
+        {NAV_ITEMS.map((item, index) => {
+          const isActive = activeKey === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => scrollToSection(item.key)}
+              style={{ marginRight: isActive ? 0 : index * 6 }}
+              className={cn(
+                "w-full rounded-lg border px-3 py-2 text-left text-xs backdrop-blur-md transition-all duration-200 ease-out",
+                item.special && "mt-2",
+                isActive
+                  ? item.special
+                    ? "border-primary/50 bg-primary/10 font-medium text-foreground shadow-md"
+                    : "border-border/60 bg-background/80 font-medium text-foreground shadow-md"
+                  : item.special
+                    ? "border-primary/25 bg-primary/5 text-muted-foreground/70 shadow-sm hover:bg-primary/10 hover:text-foreground"
+                    : "border-border/15 bg-background/25 text-muted-foreground/60 shadow-sm hover:bg-background/45 hover:text-foreground"
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                <span className="truncate">{item.title}</span>
+                {isFilled(item.key) ? (
                   <span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />
                 ) : null}
-              </button>
-            ))}
-            <div aria-hidden className="my-1 h-px bg-border/40" />
-            <button
-              type="button"
-              onClick={() => scrollToSection(FULL_TEXT_KEY)}
-              className={navButtonClass(FULL_TEXT_KEY)}
-            >
-              Prompt completo
+              </span>
             </button>
-          </nav>
-        </div>
-      </div>
+          );
+        })}
+      </nav>
 
       <div className="flex flex-1 flex-col gap-4">
         {SECTIONS.map((section) => (
@@ -359,11 +351,17 @@ export function GuidedWizard({
           ref={(el) => {
             sectionRefs.current[FULL_TEXT_KEY] = el;
           }}
-          className="scroll-mt-20 rounded-lg border p-4"
+          className="scroll-mt-20 rounded-lg border-2 border-primary/25 bg-primary/[0.03] p-4 shadow-sm"
         >
-          <label className="text-sm font-semibold" htmlFor="wizard-full-text">
-            Prompt completo
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm font-semibold" htmlFor="wizard-full-text">
+              Prompt completo
+            </label>
+            <Badge variant="outline" className="gap-1 border-primary/30 text-primary">
+              <Sparkles className="size-3" />
+              Resultado final
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">
             Texto final que sera salvo. Montado automaticamente a partir das etapas acima, mas pode ser editado
             direto aqui se preferir.
