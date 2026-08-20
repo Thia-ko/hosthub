@@ -213,10 +213,10 @@ export function AppShell({
 
   const sidebarBody = (
     <div className="flex h-full flex-col">
-      <div className="border-b border-sidebar-border/40 px-4 py-5">
-        <BrandLockup subtitle={SECTION_LABEL[section]} subtitleClassName="text-sidebar-foreground/50" />
+      <div className="px-4 py-4">
+        <BrandLockup subtitle={SECTION_LABEL[section]} subtitleClassName="text-sidebar-foreground/60" />
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 px-2.5 py-3">
+      <nav className="flex flex-1 flex-col gap-1 px-2">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = item.href === active;
@@ -228,29 +228,23 @@ export function AppShell({
               onClick={() => setOpen(false)}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors duration-150",
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-sidebar-accent/80 font-medium text-sidebar-accent-foreground"
-                  : "font-normal text-sidebar-foreground/55 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               )}
             >
-              <span
-                className={cn(
-                  "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary transition-opacity duration-150",
-                  isActive ? "opacity-100" : "opacity-0"
-                )}
-              />
               <Icon className="size-4 shrink-0" />
               {item.label}
             </Link>
           );
         })}
       </nav>
-      <div className="flex flex-col gap-2 border-t border-sidebar-border/40 px-3 py-3">
-        <div className="flex items-center justify-between gap-2 rounded-lg bg-sidebar-accent/30 px-2.5 py-2">
+      <div className="flex flex-col gap-2 border-t border-sidebar-border px-3 py-3">
+        <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-medium">{user.fullName}</span>
-            <span className="truncate text-xs text-sidebar-foreground/50">{user.email}</span>
+            <span className="truncate text-xs text-sidebar-foreground/60">{user.email}</span>
           </div>
           <Badge variant="secondary" className="shrink-0">
             {user.role === "admin" ? "Admin" : "Cliente"}
@@ -267,7 +261,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-muted/20 lg:flex">
-      <aside className="hidden bg-sidebar text-sidebar-foreground shadow-[-4px_0_16px_rgba(0,0,0,0.04)] lg:fixed lg:inset-y-0 lg:right-0 lg:flex lg:w-64 lg:flex-col dark:shadow-none">
+      <aside className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[1px_0_4px_rgba(0,0,0,0.04)] lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col dark:shadow-none">
         {sidebarBody}
       </aside>
 
@@ -278,7 +272,7 @@ export function AppShell({
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
+          <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
             <SheetTitle className="sr-only">Menu de navegacao</SheetTitle>
             {sidebarBody}
           </SheetContent>
@@ -286,7 +280,7 @@ export function AppShell({
         <BrandLockup />
       </div>
 
-      <div className="flex-1 lg:pr-64">
+      <div className="flex-1 lg:pl-64">
         {topBar}
         <main className="p-4 lg:p-6">{children}</main>
       </div>
