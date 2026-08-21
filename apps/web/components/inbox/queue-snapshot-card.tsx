@@ -63,7 +63,7 @@ export function QueueSnapshotCard({ instanceId, queueHref }: { instanceId: strin
   const oldestWaitSeconds = items && items.length > 0 ? Math.max(...items.map((item) => item.wait_time_seconds)) : null;
 
   return (
-    <Card>
+    <Card className="[--card-spacing:--spacing(5)]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <span className="relative flex size-2.5">

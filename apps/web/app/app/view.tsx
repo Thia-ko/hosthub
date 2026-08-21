@@ -4,9 +4,12 @@ import { Server } from "lucide-react";
 import { InstanceDashboard } from "@/components/instance-dashboard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/state";
 import { useOwnInstances } from "@/lib/instance-context";
+import { useCurrentUser } from "@/lib/user-context";
 
 export default function ClientHomeView() {
   const { instances, selectedId, error, reload } = useOwnInstances();
+  const { fullName } = useCurrentUser();
+  const greeting = `Bem-vindo de volta, ${fullName.split(" ")[0]}`;
 
   if (error) {
     return <ErrorState message={error} onRetry={reload} />;
@@ -19,7 +22,7 @@ export default function ClientHomeView() {
   if (instances.length === 0 || !selectedId) {
     return (
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">Sua IA</h1>
+        <h1 className="text-xl font-semibold">{greeting}</h1>
         <EmptyState
           title="Nenhuma instancia associada a sua conta ainda."
           description="Fale com o administrador para vincular sua conta a uma instancia."
@@ -31,7 +34,7 @@ export default function ClientHomeView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Sua IA</h1>
+      <h1 className="text-xl font-semibold">{greeting}</h1>
       <InstanceDashboard instanceId={selectedId} promptHref="/app/prompt" queueHref="/app/filas" />
     </div>
   );

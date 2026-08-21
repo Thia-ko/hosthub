@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { EASE_BRAND } from "@/lib/motion";
 import type { InstanceStatus } from "@/lib/types";
 
 const STATUS_LABEL: Record<InstanceStatus, string> = {
@@ -15,11 +16,6 @@ const STATUS_VARIANT: Record<InstanceStatus, "default" | "secondary" | "outline"
   paused: "secondary",
   archived: "outline",
 };
-
-/** Mirrors --ease-brand from app/globals.css (cubic-bezier(0.16, 1, 0.3, 1)).
- * Framer Motion can't consume CSS custom properties in `ease`, so the curve
- * is duplicated here — keep both values in sync if the token changes. */
-const EASE_BRAND = [0.16, 1, 0.3, 1] as const;
 
 const badgeMotion: Variants = {
   initial: { opacity: 0, y: 4, scale: 0.96 },

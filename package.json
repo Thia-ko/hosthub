@@ -1,0 +1,14 @@
+{
+  "name": "hosthub-tooling",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root-level dev tooling (visual snapshot script, etc.). Not a deployable app - see apps/web and apps/api for those.",
+  "type": "module",
+  "scripts": {
+    "snapshot": "tsx scripts/take-snapshot.ts"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.43.1",
+    "tsx": "^4.19.2"
+  }
+}

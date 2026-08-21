@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Progress } from "@/components/ui/progress";
-import { StatCard } from "@/components/stat-card";
+import { StatCard, statValueClassName } from "@/components/stat-card";
 import { Sparkline } from "@/components/sparkline";
 import { QueueSnapshotCard } from "@/components/inbox/queue-snapshot-card";
 import { ErrorState, LoadingState } from "@/components/state";
@@ -59,13 +59,15 @@ export function InstanceDashboard({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard title="Mensagens de clientes hoje" icon={MessageSquare} className="sm:col-span-2">
-          <p className="text-2xl font-semibold">{summary.total_messages}</p>
+        <StatCard
+          title="Mensagens de clientes hoje"
+          icon={MessageSquare}
+          value={summary.total_messages}
+          className="sm:col-span-2"
+        >
           <Sparkline data={summary.messages_last_7_days.map((d) => ({ value: d.count }))} />
         </StatCard>
-        <StatCard title="Versoes de prompt" icon={FileText}>
-          <p className="text-2xl font-semibold">{summary.prompt_versions_count}</p>
-        </StatCard>
+        <StatCard title="Versoes de prompt" icon={FileText} value={summary.prompt_versions_count} />
         <StatCard title="Uso do assistente de IA hoje" icon={Bot} className="sm:col-span-2">
           <p className="text-sm">
             {summary.ai_assist_usage_today} / {summary.ai_assist_daily_limit} tokens
@@ -76,7 +78,7 @@ export function InstanceDashboard({
         <StatCard title="Satisfacao dos clientes" icon={Star}>
           {summary.csat_response_count > 0 ? (
             <>
-              <p className="text-2xl font-semibold">{summary.csat_average?.toFixed(1)} / 5</p>
+              <p className={statValueClassName}>{summary.csat_average?.toFixed(1)} / 5</p>
               <p className="text-xs text-muted-foreground">
                 {summary.csat_response_count} {summary.csat_response_count === 1 ? "avaliacao" : "avaliacoes"}
               </p>
@@ -88,7 +90,7 @@ export function InstanceDashboard({
         <StatCard title="Resolvido pela IA" icon={Sparkles}>
           {summary.threads_with_activity > 0 ? (
             <>
-              <p className="text-2xl font-semibold">{summary.resolution_rate_pct}%</p>
+              <p className={statValueClassName}>{summary.resolution_rate_pct}%</p>
               <p className="text-xs text-muted-foreground">
                 {summary.ai_resolved_threads} de {summary.threads_with_activity} conversas sem humano
               </p>
@@ -100,8 +102,7 @@ export function InstanceDashboard({
             <p className="text-sm text-muted-foreground">Sem conversas no periodo</p>
           )}
         </StatCard>
-        <StatCard title="Conversas ativas hoje" icon={Users}>
-          <p className="text-2xl font-semibold">{summary.active_conversations}</p>
+        <StatCard title="Conversas ativas hoje" icon={Users} value={summary.active_conversations}>
           <p className="text-xs text-muted-foreground">clientes distintos que mandaram mensagem hoje</p>
         </StatCard>
         {queueHref ? <QueueSnapshotCard instanceId={instanceId} queueHref={queueHref} /> : null}

@@ -2,16 +2,14 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Bot,
   Cable,
   Database,
   FileText,
   LayoutDashboard,
-  LogOut,
   Megaphone,
-  Menu,
   MessageSquare,
   MessagesSquare,
   Palette,
@@ -22,16 +20,15 @@ import {
   Webhook,
   Workflow,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { BrandLockup } from "@/components/brand-mark";
+import { AppHeader } from "@/components/app-header";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingTour, type OnboardingStep } from "@/components/onboarding-tour";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { apiFetch } from "@/lib/api-client";
 import { ONBOARDING_SEEN_PREFIX } from "@/lib/constants";
 import { useOwnInstancesOptional } from "@/lib/instance-context";
 import type { QueueItem } from "@/lib/types";
+import { CurrentUserProvider } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -68,7 +65,7 @@ const NAV: Record<Section, NavGroup[]> = {
     },
   ],
   app: [
-    { items: [{ href: "/app", label: "Dashboard", icon: LayoutDashboard }] },
+    { items: [{ href: "/app", label: "Visão Geral do Hub", icon: LayoutDashboard }] },
     {
       label: "Atendimento",
       items: [
@@ -108,8 +105,7 @@ const SECTION_LABEL: Record<Section, string> = {
 
 /** One onboarding step per nav item, targeted via the `data-tour` attribute set on each link
  * below. Shown automatically the first time a user reaches a section (tracked in localStorage
- * per section, see `ONBOARDING_SEEN_PREFIX`) and replayable anytime via the "Tour guiado"
- * button in the sidebar footer. */
+ * per section, see `ONBOARDING_SEEN_PREFIX`). */
 const TOUR_STEPS: Record<Section, OnboardingStep[]> = {
   admin: [
     {
@@ -249,13 +245,14 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const groups = NAV[section];
   const active = useMemo(
     () => activeHref(pathname, groups.flatMap((group) => group.items)),
     [pathname, groups]
   );
+  const activeLabel =
+    groups.flatMap((group) => group.items).find((item) => item.href === active)?.label ?? SECTION_LABEL[section];
   const ownInstances = useOwnInstancesOptional();
   const queueCount = useQueueCount(section === "app" ? (ownInstances?.selectedId ?? null) : null);
   const tourSteps = TOUR_STEPS[section];
@@ -273,18 +270,9 @@ export function AppShell({
     window.localStorage.setItem(`${ONBOARDING_SEEN_PREFIX}${section}`, "1");
   }
 
-  async function handleLogout() {
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => null);
-    router.push("/login");
-    router.refresh();
-  }
-
   const sidebarBody = (
     <div className="flex h-full flex-col">
-      <div className="px-4 py-4">
-        <BrandLockup subtitle={SECTION_LABEL[section]} subtitleClassName="text-sidebar-foreground/60" />
-      </div>
-      <nav className="flex flex-1 flex-col px-2">
+      <nav className="flex flex-1 flex-col px-2 pt-4">
         {groups.map((group, groupIndex) => (
           <div
             key={group.label ?? `group-${groupIndex}`}
@@ -328,22 +316,6 @@ export function AppShell({
           </div>
         ))}
       </nav>
-      <div className="flex flex-col gap-2 border-t border-sidebar-border px-3 py-3">
-        <div className="flex items-center justify-between gap-2 px-1">
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium">{user.fullName}</span>
-            <span className="truncate text-xs text-sidebar-foreground/60">{user.email}</span>
-          </div>
-          <Badge variant="secondary" className="shrink-0">
-            {user.role === "admin" ? "Admin" : "Cliente"}
-          </Badge>
-        </div>
-        <ThemeToggle className="w-full justify-start" />
-        <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={handleLogout}>
-          <LogOut className="size-4" />
-          Sair
-        </Button>
-      </div>
     </div>
   );
 
@@ -353,25 +325,20 @@ export function AppShell({
         {sidebarBody}
       </aside>
 
-      <div className="flex items-center gap-3 border-b bg-background px-4 py-3 lg:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Abrir menu">
-              <Menu className="size-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
-            <SheetTitle className="sr-only">Menu de navegacao</SheetTitle>
-            {sidebarBody}
-          </SheetContent>
-        </Sheet>
-        <BrandLockup />
-      </div>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
+          <SheetTitle className="sr-only">Menu de navegacao</SheetTitle>
+          {sidebarBody}
+        </SheetContent>
+      </Sheet>
 
-      <div className="flex-1 lg:pl-64">
-        {topBar}
-        <main className="p-4 lg:p-6">{children}</main>
-      </div>
+      <CurrentUserProvider user={user}>
+        <div className="flex min-h-screen flex-1 flex-col lg:pl-64">
+          <AppHeader greeting={activeLabel} user={user} onMenuClick={() => setOpen(true)} />
+          {topBar}
+          <main className="flex-1 p-4 lg:p-6">{children}</main>
+        </div>
+      </CurrentUserProvider>
 
       {tourActive ? (
         <OnboardingTour
