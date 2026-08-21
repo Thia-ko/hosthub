@@ -1,39 +1,9 @@
 # Evolução Visual do HostHub
 
-Memorial de mudanças visuais relevantes do produto, mantido como parte do fluxo de
-trabalho normal (não um documento retroativo/pontual). Toda alteração visual relevante
-(layout, hierarquia, motion, componentes de UI) deve:
-
-1. Gerar um snapshot com `scripts/take-snapshot.ts` (antes de mudar, se a tela já existir
-   no histórico, e depois de aplicar a mudança).
-2. Ganhar uma entrada nova na seção [Histórico de mudanças](#histórico-de-mudanças) deste
-   arquivo, com uma explicação breve do que mudou e os caminhos dos prints.
-
-## Protocolo de snapshot
-
-Script: [`scripts/take-snapshot.ts`](../scripts/take-snapshot.ts). Requer o stack rodando
-(`docker compose up`, ou os containers `hosthub-web-1`/`hosthub-api-1`/`hosthub-proxy-1`
-já de pé) e as dependências de tooling instaladas na raiz do repo (`npm install`).
-
-```bash
-# da raiz do repo
-npm run snapshot -- <label> <path> [opcoes]
-
-# exemplos usados neste memorial
-npm run snapshot -- client-dashboard /app --email=<email> --password=<senha>
-npm run snapshot -- admin-dashboard /admin --email=<email> --password=<senha>
-```
-
-- `<label>`: identifica a tela (`client-dashboard`, `admin-instances`, ...). Cada label
-  tem sua própria pasta em `docs/screenshots/<label>/`.
-- `<path>`: rota a capturar (relativa a `--base`, padrão `http://localhost:8888`, o proxy
-  Caddy — **não** a porta 3000 do container `web` direto, que não resolve `/api/*`).
-- `--email`/`--password`: login automático via `POST /api/v1/auth/login` antes de
-  navegar, necessário para rotas protegidas (`/app`, `/admin`).
-- Cada execução salva um novo arquivo `docs/screenshots/<label>/<timestamp>.png` e nunca
-  sobrescreve os anteriores — `ls docs/screenshots/<label>/` dá o histórico daquela tela
-  em ordem cronológica. O script imprime o print anterior (se existir, prefixado
-  `PREVIOUS:`) e o novo (última linha), para montar o par antes/depois no momento do commit.
+Registro em texto das mudanças visuais relevantes do produto (layout, hierarquia,
+motion, componentes de UI): o que mudou, por quê e em qual issue. Sem automação de
+captura de tela — este arquivo é mantido manualmente a cada mudança visual relevante,
+como parte do fluxo de trabalho normal.
 
 ## Bibliotecas visuais (dependências)
 
@@ -77,13 +47,6 @@ motion), [#12](https://github.com/Thia-ko/hosthub/issues/12) (elevar UI/UX do da
   (`lib/motion.ts`, espelha `--ease-brand` de `globals.css`), respeitando
   `prefers-reduced-motion`.
 
-**Prints:**
-
-> Este é o primeiro registro do protocolo de snapshot — não existe um "antes" persistido
-> desta mudança (o protocolo nasceu junto com ela). A partir daqui, toda entrada nova
-> deste memorial deve incluir o par antes/depois real.
-
-- Depois — dashboard do cliente (`/app`):
-  [`docs/screenshots/client-dashboard/2026-08-21T06-01-37-628Z.png`](screenshots/client-dashboard/2026-08-21T06-01-37-628Z.png)
-- Depois — dashboard do admin (`/admin`):
-  [`docs/screenshots/admin-dashboard/2026-08-21T06-01-44-529Z.png`](screenshots/admin-dashboard/2026-08-21T06-01-44-529Z.png)
+**Verificação:** validado manualmente via browser (login real como cliente e como admin,
+desktop e mobile, tema claro/escuro, dropdown/logout) — sem prints anexados a este
+registro.
